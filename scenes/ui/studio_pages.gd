@@ -21,7 +21,8 @@ func tile(app, key: String, area: Rect2, label: String) -> void:
 func wallet(app, area: Rect2) -> void:
 	app.panel(area, app.SUN, 24)
 	icon(app, "coin", area.position + Vector2(40, area.size.y / 2), 54)
-	app.ink(app.group_int(Progression.coins(app.save)), Rect2(area.position + Vector2(74, 0), Vector2(area.size.x - 85, area.size.y)), 36, app.WARM)
+	app.ink(app.group_int(Progression.coins(app.save)), Rect2(area.position + Vector2(74, 0), Vector2(area.size.x - 85, area.size.y * 0.57)), 36, app.WARM)
+	app.ink("Clay Coins", Rect2(area.position + Vector2(74, area.size.y * 0.54), Vector2(area.size.x - 85, area.size.y * 0.42)), 19, app.WARM)
 
 func render(app) -> void:
 	match app.view:
@@ -66,7 +67,7 @@ func shop(app) -> void:
 		var item: Array = Progression.SHOP[i]
 		var area := Rect2(62 + (i % 2) * 486, 340 + floori(i / 2.0) * 465, 470, 430)
 		app.card(area)
-		var owned := Progression.unlocked(app.save, item[0], item[1])
+		var owned := Progression.unlocked(app.save, item[0], item[1], item[3])
 		var key: StringName = ThemeCatalog.MATERIALS[item[1]][0] if item[0] == "material" else ThemeCatalog.CUTTERS[item[1]][0]
 		if item[0] == "material":
 			app.board.slab.swatch(app, Rect2(area.position + Vector2(92, 35), Vector2(286, 190)), item[1])

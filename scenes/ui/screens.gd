@@ -137,7 +137,7 @@ func materials(app) -> void:
 		var col := skin % 4
 		var row := floori(float(skin) / 4.0)
 		var card := Rect2(53 + 246 * col, 482 + 325 * row, 236, 279)
-		var unlocked: bool = Progression.unlocked(app.save, "material", skin)
+		var unlocked: bool = Progression.unlocked(app.save, "material", skin, int(item[1]))
 		var id := "skin_%d" % skin
 		var tint: Color = paints[skin % paints.size()]
 		app.button(id, card, "", selected == skin, false, not unlocked, app.MINT if selected == skin else app.PAPER)

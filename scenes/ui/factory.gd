@@ -65,6 +65,8 @@ var pressure_overlay := PressureOverlay.new()
 var online_board := OnlineBoard.new()
 var tutorial_active := false
 var tutorial_hint: Dictionary = {}
+var tutorial_start_lines := 0
+var tutorial_start_cells := 0
 var font := FontVariation.new()
 var heading := FontVariation.new()
 var background: ColorRect
@@ -211,6 +213,8 @@ func start(mode: String, resume: bool) -> void:
 	best_celebrated = run.score >= 100 and run.score == save.best(run.mode, run.day, run.used_continue)
 	tutorial_active = mode == GameManager.ENDLESS and not bool(save.setting("tutorial_complete", false)) and run.cut_count < 15
 	tutorial_hint = run.coaching_hint() if tutorial_active else {}
+	tutorial_start_lines = run.line_count
+	tutorial_start_cells = run.cut_count
 
 func _process(delta: float) -> void:
 	pressure_overlay.update_pressure(self)
@@ -459,7 +463,7 @@ func draw_game() -> void:
 	if not hint.is_empty():
 		panel(slots[hint.slot].grow(3), Color.TRANSPARENT, 24, Color(TEAL, pulse), 3)
 	draw_cut_caption(hint)
-	if tutorial_active and not hint.is_empty():
+	if tutorial_active and not hint.is_empty() and input.pointer == InputManager.IDLE and not animation.active and banner_age >= 1.65:
 		panel(Rect2(65, 1747, 950, 112), PAPER, 24, EDGE)
 		ink(tr("COACH_LINE" if run.cut_count > 0 else "COACH_DRAG"), Rect2(82, 1751, 725, 100), 27, TEAL)
 		button("skip_tutorial", Rect2(822, 1761, 176, 80), tr("SKIP"), false, true)
@@ -751,7 +755,7 @@ func cut(slot: int, anchor: Vector2i) -> void:
 		return
 	var changed_best := save.update_move(run, change.removed.size(), change.lines)
 	if tutorial_active:
-		if run.line_count > 0 or run.cut_count >= 20 or run.ended:
+		if run.line_count > tutorial_start_lines or run.cut_count - tutorial_start_cells >= 20 or run.ended:
 			tutorial_active = false
 			save.set_setting("tutorial_complete", true)
 		tutorial_hint = run.coaching_hint() if tutorial_active else {}
@@ -797,6 +801,8 @@ func activate(id: String) -> void:
 			start(GameManager.ENDLESS, true)
 			tutorial_active = not run.ended
 			tutorial_hint = run.coaching_hint()
+			tutorial_start_lines = run.line_count
+			tutorial_start_cells = run.cut_count
 		"skip_tutorial":
 			tutorial_active = false
 			tutorial_hint.clear()
@@ -833,7 +839,8 @@ func activate(id: String) -> void:
 			open("menu" if id == "home" else id)
 		_:
 			if id.begins_with("claim_"):
-				Progression.claim(save, int(id.get_slice("_", 1)), Time.get_date_string_from_system(true))
+				refresh_day()
+				Progression.claim(save, int(id.get_slice("_", 1)), day)
 			elif id.begins_with("buy_"):
 				Progression.buy(save, int(id.get_slice("_", 1)))
 			else:

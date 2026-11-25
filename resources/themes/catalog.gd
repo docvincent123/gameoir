@@ -47,7 +47,7 @@ const ACHIEVEMENTS := [
 
 static func selected_material(save: SaveManager) -> int:
 	var choice := int(save.setting("material", -1))
-	if choice >= 0 and choice < MATERIALS.size() and Progression.unlocked(save, "material", choice):
+	if choice >= 0 and choice < MATERIALS.size() and Progression.unlocked(save, "material", choice, int(MATERIALS[choice][1])):
 		return choice
 	return -1
 

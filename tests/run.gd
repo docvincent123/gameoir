@@ -27,6 +27,7 @@ func run_tests() -> void:
 	test_cut_prediction()
 	test_orders()
 	test_order_records()
+	test_progression()
 	await test_interface()
 	reset_save()
 	if failures.is_empty():
@@ -534,3 +535,38 @@ func mouse_button(app: Factory, at: Vector2, pressed: bool) -> void:
 
 func screen(app: Factory, at: Vector2) -> Vector2:
 	return app.view_origin + at * app.view_scale
+
+func test_progression() -> void:
+	var path := TEST_SAVE + ".progression"
+	for suffix in ["", ".tmp", ".bak"]:
+		if FileAccess.file_exists(path + suffix):
+			DirAccess.remove_absolute(path + suffix)
+	var storage := SaveManager.new(path)
+	var day := Time.get_date_string_from_system(true)
+	check(Progression.coins(storage) == 100, "Starting coin wallet")
+	check(Progression.level(storage) == 1, "Starting profile level")
+	check(not Progression.buy(storage, 0), "Cannot buy without funds")
+	check(not Progression.claim(storage, 0, day), "Cannot claim an incomplete mission")
+	Progression.on_move(storage, 40, 5, 1)
+	check(Progression.progress(storage, Progression.TASKS[0], day) == 40, "Daily cut progress")
+	check(Progression.claim(storage, 0, day), "Completed mission can be claimed")
+	check(not Progression.claim(storage, 0, day), "Mission cannot be claimed twice")
+	check(Progression.period("2026-11-23", true) == Progression.period("2026-11-29", true), "UTC Monday to Sunday")
+	check(Progression.period("2026-11-29", true) != Progression.period("2026-11-30", true), "New UTC week")
+	storage.data.set_value("progression", "coins", 1000)
+	check(Progression.buy(storage, 0), "Cosmetic purchase")
+	check(Progression.coins(storage) == 700, "Coins deducted once")
+	check(not Progression.buy(storage, 0), "No duplicate purchase")
+	storage.set_setting("material", 2)
+	check(ThemeCatalog.selected_material(storage) == 2, "Purchased cosmetic can be equipped")
+	var reopened := SaveManager.new(path)
+	check(Progression.owns(reopened, "material", 2) and Progression.coins(reopened) == 700, "Inventory survives restart")
+	var run := GameManager.new()
+	run.start(GameManager.ENDLESS, "", 44)
+	var before := run.snapshot()
+	var hint := run.coaching_hint()
+	check(not hint.is_empty() and run.board.can_cut(hint.cells, hint.origin), "Coach proposes a legal cut")
+	check(run.snapshot() == before, "Coach does not mutate game")
+	for suffix in ["", ".tmp", ".bak"]:
+		if FileAccess.file_exists(path + suffix):
+			DirAccess.remove_absolute(path + suffix)

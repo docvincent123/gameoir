@@ -9,16 +9,16 @@ const TASKS := [
 ]
 # Existing achievements remain valid. Coins only unlock cosmetics.
 const SHOP := [
-	["material", 2, 300], ["material", 3, 600],
-	["material", 7, 180], ["material", 15, 400],
-	["metal", 1, 180], ["metal", 2, 420],
+	["material", 2, 300, 20000], ["material", 3, 600, 50000],
+	["material", 7, 180, 8000], ["material", 15, 400, 17000],
+	["metal", 1, 180, 40], ["metal", 2, 420, 120],
 ]
 
 static func xp(save) -> int:
 	return save.stat("cells") + save.stat("lines") * 8 + save.stat("orders") * 15
 
 static func level(save) -> int:
-	return 1 + xp(save) / 250
+	return 1 + floori(xp(save) / 250.0)
 
 static func coins(save) -> int:
 	return maxi(0, int(save.data.get_value("progression", "coins", 100)))
@@ -26,18 +26,18 @@ static func coins(save) -> int:
 static func owns(save, kind: String, index: int) -> bool:
 	return bool(save.data.get_value("inventory", "%s_%d" % [kind, index], false))
 
-static func unlocked(save, kind: String, index: int) -> bool:
+static func unlocked(save, kind: String, index: int, threshold: int) -> bool:
 	if owns(save, kind, index):
 		return true
 	if kind == "material":
-		return save.best() >= int(ThemeCatalog.MATERIALS[index][1])
-	return save.stat("cells") >= int(ThemeCatalog.CUTTERS[index][1])
+		return save.best() >= threshold
+	return save.stat("cells") >= threshold
 
 static func buy(save, offer: int) -> bool:
 	if offer < 0 or offer >= SHOP.size():
 		return false
 	var item: Array = SHOP[offer]
-	if unlocked(save, item[0], item[1]) or coins(save) < item[2]:
+	if unlocked(save, item[0], item[1], item[3]) or coins(save) < item[2]:
 		return false
 	save.data.set_value("inventory", "%s_%d" % [item[0], item[1]], true)
 	save.data.set_value("progression", "coins", coins(save) - item[2])
