@@ -41,28 +41,33 @@ func has_placement(shape: Array, bounds: Vector2i) -> bool:
 				return true
 	return false
 
-func cut(shape: Array, origin: Vector2i) -> Dictionary:
+func preview_cut(shape: Array, origin: Vector2i) -> Dictionary:
 	if not can_cut(shape, origin):
 		return {}
 	var removed: Array[Vector2i] = []
 	for offset: Vector2i in shape:
-		var cell := origin + offset
-		cells[index(cell)] = 0
-		removed.append(cell)
+		removed.append(origin + offset)
+	return {"removed": removed, "completed": empty_lines(removed), "full": cells.count(1) == removed.size()}
 
-	return {"removed": removed, "completed": empty_lines(), "full": cells.count(0) == COUNT}
+func cut(shape: Array, origin: Vector2i) -> Dictionary:
+	var change := preview_cut(shape, origin)
+	if not change.is_empty():
+		for tile: Vector2i in change.removed:
+			cells[index(tile)] = 0
+	return change
 
 static func line_cell(line: int, offset: int) -> Vector2i:
 	return Vector2i(offset, line) if line < SIZE else Vector2i(line - SIZE, offset)
 
-func empty_lines() -> Array[int]:
+func empty_lines(removing: Array[Vector2i] = []) -> Array[int]:
 	var completed: Array[int] = []
 	for line in LINE_COUNT:
 		if pending[line] > 0:
 			continue
 		var empty := true
 		for offset in SIZE:
-			if filled(line_cell(line, offset)):
+			var cell := line_cell(line, offset)
+			if filled(cell) and cell not in removing:
 				empty = false
 				break
 		if empty:

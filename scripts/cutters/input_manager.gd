@@ -11,6 +11,7 @@ var anchor := Vector2i.ZERO
 var touched_board := false
 var valid := false
 var touchscreen := false
+var forecast: Dictionary = {}
 
 func begin(id: int, cutter: int, at: Vector2) -> void:
 	pointer = id
@@ -19,6 +20,7 @@ func begin(id: int, cutter: int, at: Vector2) -> void:
 	touchscreen = id >= 0
 	touched_board = false
 	valid = false
+	forecast.clear()
 
 func move(at: Vector2, board_rect: Rect2, bounds: Vector2i, hold_size: float, board: BoardManager, shape: Array) -> void:
 	position = at
@@ -34,3 +36,4 @@ func cancel() -> void:
 	slot = -1
 	touched_board = false
 	valid = false
+	forecast.clear()

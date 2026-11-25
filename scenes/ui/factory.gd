@@ -72,6 +72,7 @@ var over_age := 0.0
 var banner := ""
 var banner_age := 2.1
 var best_celebrated := false
+var daily_result_copied := false
 var return_age := 0.0
 var return_from := Vector2.ZERO
 var return_slot := -1
@@ -133,6 +134,7 @@ func open(screen: String) -> void:
 	view = screen
 	accent.clear()
 	overlay = ""
+	daily_result_copied = false
 	pages.reset_effect_preview()
 	fade_age = 0.0
 	buttons.clear()
@@ -188,7 +190,7 @@ func _process(delta: float) -> void:
 	if view == "game" and overlay != "pause":
 		var particles_moving := particles.tick(delta)
 		needs_redraw = (needs_redraw or particles_moving or animation.active or banner_age < 1.65
-			or (run.ended and over_age < 1.0))
+			or (run.ended and over_age < 1.0) or (show_first_move() and not reduced))
 		banner_age += delta
 		if animation.active:
 			advance_cut(delta)
@@ -336,7 +338,7 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, DESIGN), Color(1.0, 0.964, 0.91, (1.0 - fade_age / 0.23) * 0.72))
 
 func draw_game() -> void:
-	var palette := ThemeCatalog.active_palette(run, save)
+	var style := ThemeCatalog.slab_style(run, save)
 	var active_metal := ThemeCatalog.unlocked_choice(save, "metal", ThemeCatalog.CUTTERS, save.stat("cells"))
 	var metal: Color = ThemeCatalog.CUTTERS[active_metal][2]
 	var title := tr("TITLE_TOP") + " " + tr("TITLE_BOTTOM")
@@ -355,7 +357,7 @@ func draw_game() -> void:
 	ink(tr("BEST").to_upper(), Rect2(753, 242, 231, 40), 27, WARM, HORIZONTAL_ALIGNMENT_LEFT)
 	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(749, 285, 236, 78), 58, INK, HORIZONTAL_ALIGNMENT_LEFT)
 
-	board.render(self, art, run, GRID, palette, animation, input, metal, over_age, reduced, workshop, heading)
+	board.render(self, art, run, GRID, style, animation, input, metal, over_age, reduced, workshop, heading)
 	panel(Rect2(67, 419, 458, 38), Color("#e0f2df"), 18)
 	ink(tr(DifficultyManager.RANKS[run.tier()]), Rect2(85, 420, 422, 35), 24, TEAL, HORIZONTAL_ALIGNMENT_LEFT)
 	var soonest := run.board.soonest()
@@ -375,18 +377,40 @@ func draw_game() -> void:
 		var area := Rect2(236, 180 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
 		panel(area, Color("#f4d7e7", opacity), 20, Color("#dcabc4", opacity * 0.6), 2)
 		ink(banner, area.grow(-8), 28, Color("#81375f", opacity))
+	var hint := run.first_move_hint() if show_first_move() else {}
+	var pulse := 0.72 if reduced else 0.57 + sin(clock * 4.2) * 0.16
+	if not hint.is_empty():
+		board.outline(self, GRID, UNIT, hint.cells, hint.origin, Color(TEAL, pulse), true)
 	art.skin(self, TRAY, &"recess", Color("#e4d6be"))
 	for slot in slots.size():
-		draw_slot(slot, palette[slot % palette.size()], metal)
-	if run.cut_count < 4 and not run.ended:
-		ink(tr("DRAG_HINT"), Rect2(80, 1760, 920, 53), 32, INK)
-		ink(tr("REFILL_HINT"), Rect2(76, 1813, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
-	draw_drag(palette, metal)
+		draw_slot(slot, style, metal)
+	if not hint.is_empty():
+		panel(slots[hint.slot].grow(3), Color.TRANSPARENT, 24, Color(TEAL, pulse), 3)
+	draw_cut_caption(hint)
+	draw_drag(style, metal)
 	particles.render(self, art)
 	if overlay != "":
 		draw_overlay()
 
-func draw_slot(slot: int, material: int, metal: Color) -> void:
+func show_first_move() -> bool:
+	return (run.cut_count == 0 and not run.ended and save.stat("cells") == 0
+		and input.pointer == InputManager.IDLE and return_slot < 0 and overlay.is_empty())
+
+func draw_cut_caption(hint: Dictionary) -> void:
+	if input.valid and not input.forecast.is_empty():
+		var points: int = input.forecast.points
+		panel(Rect2(212, 1749, 656, 67), Color("#e6efe4"), 29, Color("#b2d1bc"), 2)
+		ink(tr("PREVIEW_POINTS") % group_int(points), Rect2(220, 1753, 640, 58), 31, TEAL)
+		var completed: int = input.forecast.completed.size()
+		if completed > 0:
+			var label := tr("PREVIEW_ONE_LINE") if completed == 1 else tr("PREVIEW_LINES") % completed
+			ink(label, Rect2(76, 1824, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+	elif run.cut_count < 4 and not run.ended:
+		var title := "FIRST_CUT_HINT" if not hint.is_empty() else "DRAG_HINT"
+		ink(tr(title), Rect2(80, 1750, 920, 63), 32, INK)
+		ink(tr("REFILL_HINT"), Rect2(76, 1813, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+
+func draw_slot(slot: int, style: int, metal: Color) -> void:
 	var area := slots[slot]
 	var id: String = run.cutters.hand[slot]
 	var empty := id == "" or slot == input.slot or slot == return_slot
@@ -404,19 +428,18 @@ func draw_slot(slot: int, material: int, metal: Color) -> void:
 		unit *= lerpf(0.71, 1.0, ease(spring, -1.8))
 		center.y += 27.0 * (1.0 - spring)
 		tone.a *= smoothstep(0.03, 0.59, spring)
-	draw_form(form, id, center, unit, material, Color(metal, tone.a), Color(tone, tone.a * 0.91))
+	draw_form(form, id, center, unit, style, Color(metal, tone.a), tone)
 
 func preview_unit(form: Dictionary, width: float, height: float) -> float:
 	var size: Vector2i = form.size
 	return minf(width / size.x, height / size.y)
 
-func draw_form(form: Dictionary, id: String, at: Vector2, unit: float, material: int, metal: Color, tint: Color) -> void:
+func draw_form(form: Dictionary, id: String, at: Vector2, unit: float, style: int, metal: Color, tint: Color) -> void:
 	var start := at - Vector2(form.size) * unit / 2.0
-	for cell: Vector2i in form.cells:
-		art.cell(self, Rect2(start + Vector2(cell) * unit, Vector2.ONE * unit), material, (cell.x * 3 + cell.y * 5) % ClayArt.VARIANTS, tint)
+	board.slab.piece(self, form.cells, Vector2i.ZERO, start, unit, style, tint, unit * 0.07)
 	art.cutter(self, id, at, unit, metal)
 
-func draw_drag(palette: Array, metal: Color) -> void:
+func draw_drag(style: int, metal: Color) -> void:
 	if input.slot >= 0:
 		var id := run.cutters.hand[input.slot]
 		var form := run.cutters.shape(input.slot)
@@ -426,7 +449,7 @@ func draw_drag(palette: Array, metal: Color) -> void:
 			var tint := BoardView.VALID if input.valid else BoardView.INVALID
 			art.cutter(self, id, drag_center, UNIT, metal.lerp(tint, 0.46))
 		else:
-			draw_form(form, id, drag_center, UNIT, palette[input.slot % palette.size()], metal, Color.WHITE)
+			draw_form(form, id, drag_center, UNIT, style, metal, Color.WHITE)
 	elif return_slot >= 0:
 		var id := run.cutters.hand[return_slot]
 		var form := run.cutters.shape(return_slot)
@@ -436,7 +459,7 @@ func draw_drag(palette: Array, metal: Color) -> void:
 		var center := return_from.lerp(target, easing)
 		center.y -= 22.0 * sin(progress * PI)
 		var unit := lerpf(UNIT, preview_unit(form, SLOT_PREVIEW.x, SLOT_PREVIEW.y), easing)
-		draw_form(form, id, center, unit, palette[return_slot % palette.size()], metal, Color.WHITE)
+		draw_form(form, id, center, unit, style, metal, Color.WHITE)
 
 func draw_overlay() -> void:
 	buttons.clear()
@@ -449,7 +472,8 @@ func draw_overlay() -> void:
 		button("home", Rect2(189, 1000, 702, 105), tr("HOME"))
 		button("pause_settings", Rect2(189, 1142, 702, 96), tr("SETTINGS"))
 		return
-	var modal := Rect2(94, 597, 892, 727)
+	var daily := run.mode == GameManager.DAILY and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD)
+	var modal := Rect2(94, 542 if daily else 597, 892, 837 if daily else 727)
 	card(modal, PAPER)
 	var top := modal.position.y
 	art.icon(self, &"trophy", Vector2(540, top + 73), 110.0)
@@ -463,6 +487,18 @@ func draw_overlay() -> void:
 	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(555, top + 313, 340, 78), 58, WARM)
 	button("again", Rect2(168, top + 460, 744, 111), tr("PLAY_AGAIN"), true)
 	button("home", Rect2(168, top + 605, 744, 90), tr("HOME"))
+	if daily:
+		var text := tr("DAILY_COPIED") if daily_result_copied else tr("COPY_DAILY")
+		button("copy_daily", Rect2(168, top + 714, 744, 83), text, false, true)
+
+func daily_result_text() -> String:
+	return "%s %s · %s\n%s\n%s %s" % [tr("TITLE_TOP"), tr("TITLE_BOTTOM"), tr("DAILY"),
+		run.day, tr("SCORE"), group_int(run.score)]
+
+func copy_daily_result() -> void:
+	if overlay == "over" and run.mode == GameManager.DAILY and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		DisplayServer.clipboard_set(daily_result_text())
+		daily_result_copied = true
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
@@ -525,7 +561,13 @@ func pointer_down(id: int, at: Vector2) -> void:
 func pointer_move(id: int, at: Vector2) -> void:
 	if input.pointer == id and input.slot >= 0:
 		var form := run.cutters.shape(input.slot)
+		var previous := input.anchor
 		input.move(at, GRID, form.size, UNIT, run.board, form.cells)
+		if input.valid:
+			if input.forecast.is_empty() or previous != input.anchor:
+				input.forecast = run.preview_move(input.slot, input.anchor)
+		else:
+			input.forecast.clear()
 		queue_redraw()
 	elif id == InputManager.MOUSE:
 		var next := button_at(at)
@@ -598,12 +640,13 @@ func reset_press() -> void:
 func cut(slot: int, anchor: Vector2i) -> void:
 	var id := run.cutters.hand[slot]
 	var palette := ThemeCatalog.active_palette(run, save)
+	var style := ThemeCatalog.slab_style(run, save)
 	var change := run.play(slot, anchor)
 	if change.is_empty():
 		return
 	var changed_best := save.update_move(run, change.removed.size(), change.lines)
 	var center := GRID.position + (Vector2(anchor) + Vector2(change.form.size) / 2.0) * UNIT
-	start_animation(change, id, center, palette)
+	start_animation(change, id, center, palette, style)
 	audio.effect("stretch")
 	audio.buzz(22)
 	if score_tween != null:
@@ -618,9 +661,9 @@ func cut(slot: int, anchor: Vector2i) -> void:
 			accent.celebrate(center)
 		particles.burst(center, 18 if reduced else 45, palette[0], GILT, true, 1.18)
 
-func start_animation(change: Dictionary, stamp: String, center: Vector2, palette: Array) -> void:
+func start_animation(change: Dictionary, stamp: String, center: Vector2, palette: Array, style: int) -> void:
 	var effect := ThemeCatalog.unlocked_choice(save, "effect", ThemeCatalog.EFFECTS, save.stat("lines"))
-	animation.start(change, stamp, center, palette, effect)
+	animation.start(change, stamp, center, palette, style, effect)
 	if not change.refilled.is_empty():
 		var middle := BoardManager.line_cell(change.refilled[0], floori(BoardManager.SIZE / 2.0))
 		animation.refill_center = GRID.position + (Vector2(middle) + Vector2.ONE * 0.5) * UNIT
@@ -643,6 +686,8 @@ func activate(id: String) -> void:
 			start(GameManager.DAILY, true)
 		"again":
 			start(run.mode, false)
+		"copy_daily":
+			copy_daily_result()
 		"pause":
 			if not animation.active and not run.ended:
 				input.cancel()

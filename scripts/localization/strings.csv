@@ -16,13 +16,13 @@ GAME_OVER,Out of moves,Ходи закінчилися,Brak ruchów,Keine Züge 
 PAUSED,Paused,Пауза,Pauza,Pause,En pausa,En pause
 PLAY_AGAIN,Play again,Зіграти знову,Zagraj ponownie,Erneut spielen,Jugar otra vez,Rejouer
 ASSISTED,Assisted run,Гра з продовженням,Gra z pomocą,Partie mit Hilfe,Partida asistida,Partie assistée
-DRAG_HINT,Drag a cutter onto the clay,Перетягніть формочку на пластилін,Przeciągnij foremkę na plastelinę,Ziehe eine Form auf die Knete,Arrastra un molde a la arcilla,Glisse un emporte-pièce sur la pâte
+DRAG_HINT,Drag a cutter onto the clay slab,Перетягніть формочку на пласт,Przeciągnij foremkę na płat plasteliny,Zieh eine Form auf die Knetplatte,Arrastra un molde sobre la placa,Glisse un moule sur la plaque
 REFILL_HINT,Clear a line to start its refill countdown.,"Виріжте лінію, щоб почався відлік до відновлення.","Wytnij linię, aby rozpocząć odliczanie.","Schneide eine Linie aus, um den Countdown zu starten.",Corta una línea para iniciar la cuenta atrás.,Découpe une ligne pour lancer son compte à rebours.
 CUTTERS,Cutters,Формочки,Foremki,Formen,Moldes,Emporte-pièces
 MATERIALS,Clay,Пластилін,Plastelina,Knete,Arcilla,Pâte
 STYLES,Workshop,Майстерня,Pracownia,Werkstatt,Taller,Atelier
 EFFECTS,Effects,Ефекти,Efekty,Effekte,Efectos,Effets
-AUTO_THEME,Follow rank,За рангом,Według rangi,Nach Rang,Según rango,Selon le rang
+AUTO_THEME,Default clay,Матеріал режиму,Domyślna plastelina,Standardknete,Arcilla del modo,Pâte par défaut
 SELECTED,Selected,Вибрано,Wybrano,Aktiv,Seleccionado,Sélectionné
 UNLOCK_BEST,Best %s,Рекорд %s,Rekord %s,Bestwert %s,Récord %s,Record %s
 UNLOCK_CELLS,%s cells,%s клітинок,%s pól,%s Felder,%s casillas,%s cases
@@ -94,3 +94,9 @@ SKIN_CONFETTI,Confetti,Конфеті,Konfetti,Konfetti,Confeti,Confettis
 SKIN_WAFFLE,Waffle,Вафля,Wafel,Waffel,Gofre,Gaufre
 SKIN_AURORA,Aurora,Полярне сяйво,Zorza,Polarlicht,Aurora,Aurore
 REFILL_NEXT,Refill next turn,Відновлення за 1 хід,Uzupełnienie za 1 turę,Füllung in 1 Zug,Relleno en 1 turno,Remplissage dans 1 tour
+FIRST_CUT_HINT,Drag the outlined cutter to the marked area,Перетягніть підсвічену формочку на контур,Przeciągnij podświetloną foremkę w oznaczone miejsce,Zieh die markierte Form zum Umriss,Arrastra el molde marcado al contorno,Glisse le moule en surbrillance vers le contour
+PREVIEW_POINTS,+%s points,+%s очок,+%s pkt,+%s Punkte,+%s puntos,+%s points
+PREVIEW_ONE_LINE,1 line will enter the refill queue,1 лінія стане в чергу на відновлення,1 linia trafi do kolejki odnowy,1 Linie kommt in die Füllwarteschlange,1 línea se añadirá a la cola,1 ligne rejoindra la file de remplissage
+PREVIEW_LINES,%s lines will enter the refill queue,Ліній до черги на відновлення: %s,Liczba linii w kolejce odnowy: %s,Linien für die Füllwarteschlange: %s,Líneas que se añadirán a la cola: %s,Lignes qui rejoindront la file : %s
+COPY_DAILY,Copy daily score,Копіювати результат дня,Kopiuj wynik dnia,Tagesergebnis kopieren,Copiar resultado diario,Copier le score du jour
+DAILY_COPIED,Score copied,Результат скопійовано,Wynik skopiowany,Ergebnis kopiert,Resultado copiado,Score copié

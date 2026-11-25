@@ -28,6 +28,33 @@ func start(game_mode: String, challenge_day: String, seed_value: int) -> void:
 func tier() -> int:
 	return DifficultyManager.tier(score, BALANCE)
 
+func preview_move(slot: int, origin: Vector2i) -> Dictionary:
+	if ended:
+		return {}
+	var form := cutters.shape(slot)
+	if form.is_empty():
+		return {}
+	var change := board.preview_cut(form.cells, origin)
+	if not change.is_empty():
+		var next_streak := streak + 1 if not change.completed.is_empty() else 0
+		change.points = cut_points(change, next_streak)
+	return change
+
+func first_move_hint() -> Dictionary:
+	if cut_count > 0 or ended:
+		return {}
+	for slot in cutters.hand.size():
+		var form := cutters.shape(slot)
+		if form.is_empty():
+			continue
+		var origin := (Vector2i.ONE * BoardManager.SIZE - Vector2i(form.size)) / 2
+		if board.can_cut(form.cells, origin):
+			return {"slot": slot, "cells": form.cells, "origin": origin}
+	return {}
+
+func cut_points(change: Dictionary, combo: int) -> int:
+	return ScoreManager.points(change.removed.size(), change.completed.size(), combo, change.full, BALANCE)
+
 func play(slot: int, origin: Vector2i) -> Dictionary:
 	if ended:
 		return {}
@@ -42,7 +69,7 @@ func play(slot: int, origin: Vector2i) -> Dictionary:
 	max_streak = maxi(max_streak, streak)
 	cut_count += change.removed.size()
 	line_count += lines
-	var points := ScoreManager.points(change.removed.size(), lines, streak, change.full, BALANCE)
+	var points := cut_points(change, streak)
 	score += points
 	change.merge(board.advance(change.completed, BALANCE.refill_delay(score)))
 	change.dealt = cutters.hand.count(ShapeGenerator.EMPTY) == cutters.hand.size() - 1
@@ -51,6 +78,7 @@ func play(slot: int, origin: Vector2i) -> Dictionary:
 	change.points = points
 	change.lines = lines
 	change.form = form
+	change.origin = origin
 	return change
 
 func refresh_availability() -> void:

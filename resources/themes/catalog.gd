@@ -2,13 +2,8 @@ class_name ThemeCatalog
 extends RefCounted
 
 const STUDIO_START := 16
-const PALETTES := [
-	[16, 17, 18, 19, 20, 21],
-	[16, 17, 18, 19, 21, 1],
-	[18, 21, 22, 23, 2, 16],
-	[17, 20, 23, 24, 3, 18],
-	[16, 18, 19, 21, 4, 22],
-]
+const WARM_PALETTE := [16, 17, 20]
+const COOL_PALETTE := [18, 19, 21]
 
 const MATERIALS := [
 	[&"SKIN_CLASSIC", 0],
@@ -50,11 +45,23 @@ const ACHIEVEMENTS := [
 	[&"WORKSHOP_VETERAN", "games", 20],
 ]
 
-static func active_palette(run: GameManager, save: SaveManager) -> Array:
+static func selected_material(save: SaveManager) -> int:
 	var choice := int(save.setting("material", -1))
 	if choice >= 0 and choice < MATERIALS.size() and save.best() >= MATERIALS[choice][1]:
+		return choice
+	return -1
+
+static func active_palette(run: GameManager, save: SaveManager) -> Array:
+	var choice := selected_material(save)
+	if choice >= 0:
 		return [choice]
-	return PALETTES[run.tier()]
+	return COOL_PALETTE if run.mode == GameManager.DAILY else WARM_PALETTE
+
+static func slab_style(run: GameManager, save: SaveManager) -> int:
+	var choice := selected_material(save)
+	if choice >= 0:
+		return choice
+	return STUDIO_START + 1 if run.mode == GameManager.DAILY else STUDIO_START
 
 static func material_at(palette: Array, cell: Vector2i) -> int:
 	var index := cell.y * BoardManager.SIZE + cell.x

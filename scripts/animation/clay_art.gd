@@ -7,8 +7,6 @@ const CUTTERS := preload("res://assets/cutters/steel.png")
 const REGION_FILE := "res://assets/cutters/regions.json"
 const TILE := 128
 const VARIANTS := 7
-const PRESSED := VARIANTS
-const CAVITY := VARIANTS + 1
 const CRUMB := VARIANTS + 2
 const FRAME := preload("res://assets/ui/workshop/board.png")
 const GLYPH_ATLAS := preload("res://assets/ui/workshop/glyphs.png")
@@ -34,9 +32,6 @@ func _init() -> void:
 	regions = JSON.parse_string(FileAccess.get_file_as_string(REGION_FILE))
 
 func cell(canvas: CanvasItem, area: Rect2, material: int, frame: int, tint := Color.WHITE) -> void:
-	if frame == CAVITY:
-		skin(canvas, area.grow(-4), &"recess", tint)
-		return
 	var studio := material >= ThemeCatalog.STUDIO_START
 	var row := material - ThemeCatalog.STUDIO_START if studio else material
 	var region := Rect2(frame * TILE, row * TILE, TILE, TILE)

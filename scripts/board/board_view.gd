@@ -1,67 +1,124 @@
 class_name BoardView
 extends Node2D
 
-const GILT := Color("#fff2b2")
-const VALID := Color("#006e62")
-const INVALID := Color("#ab245a")
-const WELL := Color("#e1d6c0")
-const QUEUED_WELL := Color("#f6cf9f")
+const VALID := Color("#146752")
+const INVALID := Color("#a82a58")
+const GRID_INK := Color(0.29, 0.17, 0.14, 0.22)
+const DEPTH := Color(0.52, 0.31, 0.23, 0.72)
 
-func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, palette: Array,
-		animation: AnimationManager, input: InputManager, metal: Color, over: float, reduced: bool, workshop: Color, numbers: Font) -> void:
+var slab := SlabArt.new()
+
+func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, style: int,
+		animation: AnimationManager, input: InputManager, metal: Color, over: float, reduced: bool,
+		workshop: Color, numbers: Font) -> void:
 	var unit := frame.size.x / BoardManager.SIZE
 	var board := frame
 	board.position += animation.displace(run.streak, reduced)
-	var frame_tint := workshop.lerp(Color.WHITE, 0.83).darkened(over * 0.30)
-	art.panel(canvas, shift(board.grow(49), Vector2(0, 11)), Color(0.18, 0.37, 0.31, 0.19), 48)
-	art.panel(canvas, board.grow(13), Color("#e7ddca"), 29)
+	var frame_tint := workshop.lerp(Color.WHITE, 0.90).darkened(over * 0.24)
+	art.panel(canvas, shift(board.grow(48), Vector2(0, 11)), Color(0.30, 0.22, 0.15, 0.19), 48)
 	canvas.draw_texture_rect(ClayArt.FRAME, board.grow(49), false, frame_tint)
 
-	var preview := run.cutters.shape(input.slot)
+	var visible := visible_clay(run.board, animation)
+	var whole := Color.WHITE.darkened(over * 0.24)
+	var edges := PackedByteArray()
+	edges.resize(BoardManager.COUNT)
 	for y in BoardManager.SIZE:
 		for x in BoardManager.SIZE:
 			var tile := Vector2i(x, y)
-			var cell := Rect2(board.position + Vector2(tile) * unit, Vector2.ONE * unit)
-			var occupied := run.board.filled(tile)
-			var state := animation.cell_state(tile, occupied, input, preview)
-			var pattern := (x * 11 + y * 13 + x * y) % ClayArt.VARIANTS
-			var regular := 1.012
-			var material := ThemeCatalog.material_at(palette, tile)
-			var warm := Color.WHITE.darkened(over * 0.20)
-			var queued := run.board.pending[y] > 0 or run.board.pending[BoardManager.SIZE + x] > 0
-			if state == ClayCell.State.CUTTING:
-				var progress := clampf(animation.elapsed / AnimationManager.PRESS, 0.0, 1.0)
-				var wobble := sin(progress * PI)
-				var squish := centered(cell, Vector2(1.035 + wobble * 0.035, 1.035 - wobble * (0.10 + (pattern % 3) * 0.02)))
-				art.cell(canvas, squish, ThemeCatalog.material_at(animation.palette, tile), ClayArt.PRESSED)
-				art.panel(canvas, cell.grow(-6.0), Color.TRANSPARENT, 18, Color(GILT, progress * 0.72), 4)
-			elif state == ClayCell.State.REFILLING:
-				art.cell(canvas, cell, material, ClayArt.CAVITY, WELL)
-				var wave := line_offset(animation.change, tile) * 0.015
-				var progress := clampf((animation.elapsed - AnimationManager.REFILL - wave) / 0.29, 0.0, 1.0)
-				if progress > 0.0:
-					var bounce := ease(progress, -1.65)
-					var pulse := sin(progress * PI)
-					var stretch := Vector2(0.08, -0.035) if pattern % 2 == 0 else Vector2(-0.05, 0.085)
-					var swell := centered(cell, Vector2.ONE * lerpf(0.24, 1.012, bounce) + stretch * pulse)
-					art.cell(canvas, swell, material, pattern, warm.lerp(GILT, (1.0 - progress) * 0.54))
-					art.panel(canvas, cell.grow(-3.0), Color.TRANSPARENT, 21, Color(GILT, sin(progress * PI) * 0.72), 3)
-			else:
-				var tint := warm if occupied else QUEUED_WELL if queued else WELL
-				art.cell(canvas, centered(cell, Vector2.ONE * regular), material, pattern if occupied else ClayArt.CAVITY, tint)
-				if queued and not occupied:
-					art.panel(canvas, cell.grow(-9), Color("#ffd891", 0.06), 23, Color("#c78954", 0.42), 2)
-				if state == ClayCell.State.VALID_PREVIEW or state == ClayCell.State.INVALID_PREVIEW:
-					var cue := VALID if input.valid else INVALID
-					art.panel(canvas, cell.grow(-5.5), Color(cue, 0.16), 23, cue, 5)
-			if over > 0.12 and occupied and (x * 7 + y * 3) % 4 == 0:
-				crack(canvas, cell, over)
+			var index := run.board.index(tile)
+			var cell := cell_rect(board, tile, unit)
+			if visible[index] == 0:
+				if run.board.pending[y] > 0 or run.board.pending[BoardManager.SIZE + x] > 0:
+					canvas.draw_rect(cell, Color(0.96, 0.62, 0.28, 0.15))
+				continue
+			edges[index] = SlabArt.exposed(run.board, visible, tile)
+			if edges[index] > 0:
+				slab.base(canvas, shift(cell, Vector2(2, 9)), edges[index], DEPTH)
 
+	for y in BoardManager.SIZE:
+		for x in BoardManager.SIZE:
+			var tile := Vector2i(x, y)
+			var index := run.board.index(tile)
+			if visible[index] == 0:
+				continue
+			var cell := cell_rect(board, tile, unit)
+			var pressed: bool = animation.active and animation.elapsed < AnimationManager.PRESS and tile in animation.change.removed
+			var shade := whole.darkened(0.13 * clampf(animation.elapsed / AnimationManager.PRESS, 0, 1)) if pressed else whole
+			slab.face(canvas, cell, tile, animation.slab_style if pressed else style, edges[index], shade)
+			slab.bevel(canvas, cell, edges[index], 1.0)
+			if over > 0.12 and edges[index] > 0 and (x * 7 + y * 3) % 4 == 0:
+				crack(canvas, cell, over * 0.46)
+
+	draw_grid(canvas, board, unit)
 	if animation.active:
-		stamp(canvas, art, board, unit, animation, metal, reduced)
+		rise(canvas, board, unit, style, animation)
+		stamp(canvas, art, unit, animation, metal, reduced)
 		if not reduced:
 			refill_trails(canvas, art, board, unit, animation)
+	var form := run.cutters.shape(input.slot)
+	if input.touched_board and not form.is_empty():
+		outline(canvas, board, unit, form.cells, input.anchor, VALID if input.valid else INVALID, false)
 	draw_queue(canvas, art, run.board, board, unit, numbers)
+
+func visible_clay(board: BoardManager, animation: AnimationManager) -> PackedByteArray:
+	var cells := board.cells.duplicate()
+	if not animation.active:
+		return cells
+	for tile: Vector2i in animation.change.refill:
+		if refill_progress(animation, tile) < 1.0:
+			cells[board.index(tile)] = 0
+	if animation.elapsed < AnimationManager.PRESS:
+		for tile: Vector2i in animation.change.removed:
+			cells[board.index(tile)] = 1
+	return cells
+
+func rise(canvas: CanvasItem, board: Rect2, unit: float, style: int, animation: AnimationManager) -> void:
+	for tile: Vector2i in animation.change.refill:
+		var progress := refill_progress(animation, tile)
+		if progress <= 0.0 or progress >= 1.0:
+			continue
+		var cell := cell_rect(board, tile, unit)
+		var reach := 1.0 - pow(1.0 - progress, 3.0)
+		var size := cell.size * Vector2(lerpf(0.18, 1.0, reach), lerpf(0.28, 1.0, reach))
+		var patch := Rect2(cell.get_center() - size * 0.5, size)
+		var radius := lerpf(7.0, 13.0, reach)
+		slab.base(canvas, shift(patch, Vector2(0, 7 * reach)), 15, DEPTH, radius)
+		slab.face(canvas, patch, tile, style, 15, Color.WHITE.lerp(Color("#ffefc4"), (1.0 - reach) * 0.4), radius)
+		slab.bevel(canvas, patch, 15, reach)
+
+func refill_progress(animation: AnimationManager, tile: Vector2i) -> float:
+	return clampf((animation.elapsed - AnimationManager.REFILL - line_offset(animation.change, tile) * 0.016) / 0.26, 0.0, 1.0)
+
+func draw_grid(canvas: CanvasItem, board: Rect2, unit: float) -> void:
+	for i in range(1, BoardManager.SIZE):
+		var offset := float(i) * unit
+		var x := board.position.x + offset
+		var y := board.position.y + offset
+		canvas.draw_line(Vector2(x, board.position.y + 3), Vector2(x, board.end.y - 3), GRID_INK, 1.25, true)
+		canvas.draw_line(Vector2(board.position.x + 3, y), Vector2(board.end.x - 3, y), GRID_INK, 1.25, true)
+
+func outline(canvas: CanvasItem, board: Rect2, unit: float, shape: Array,
+		origin: Vector2i, tint: Color, guide: bool) -> void:
+	for offset: Vector2i in shape:
+		var tile := origin + offset
+		if tile.x < 0 or tile.y < 0 or tile.x >= BoardManager.SIZE or tile.y >= BoardManager.SIZE:
+			continue
+		var cell := cell_rect(board, tile, unit)
+		if not guide:
+			canvas.draw_rect(cell, Color(tint, 0.17))
+		var edges := SlabArt.piece_edges(shape, offset)
+		for side in SlabArt.DIRECTIONS.size():
+			if (edges & (1 << side)) == 0:
+				continue
+			var path := SlabArt.edge_points(cell, side)
+			if guide:
+				canvas.draw_dashed_line(path[0], path[1], tint, 4.0, 17.0, true)
+			else:
+				canvas.draw_line(path[0], path[1], Color("#fff5dc"), 9.0, true)
+				canvas.draw_line(path[0], path[1], tint, 4.8, true)
+
+func cell_rect(board: Rect2, tile: Vector2i, unit: float) -> Rect2:
+	return Rect2(board.position + Vector2(tile) * unit, Vector2.ONE * unit)
 
 func draw_queue(canvas: CanvasItem, art: ClayArt, grid: BoardManager, area: Rect2, unit: float, numbers: Font) -> void:
 	for line in BoardManager.LINE_COUNT:
@@ -95,7 +152,7 @@ func refill_trails(canvas: CanvasItem, art: ClayArt, area: Rect2, unit: float, a
 		canvas.draw_line(trail, movement, Color("#bd7837", glow * 0.70), 5.0, true)
 		art.effect(canvas, ClayArt.Effect.GLINT, movement, 48.0 + 27.0 * glow, Color(Color.WHITE, glow))
 
-func stamp(canvas: CanvasItem, art: ClayArt, board: Rect2, unit: float,
+func stamp(canvas: CanvasItem, art: ClayArt, unit: float,
 		animation: AnimationManager, metal: Color, reduced: bool) -> void:
 	var elapsed := animation.elapsed
 	var pressing := clampf(elapsed / AnimationManager.PRESS, 0.0, 1.0)
@@ -108,17 +165,17 @@ func stamp(canvas: CanvasItem, art: ClayArt, board: Rect2, unit: float,
 		var alpha := sin(bloom * PI) * 0.66
 		art.effect(canvas, ClayArt.CUT_PULSES[animation.cut_effect], animation.stamp_center,
 			unit * lerpf(0.7, 2.3, bloom), Color(Color.WHITE, alpha))
-	if elapsed >= AnimationManager.PRESS and elapsed <= 0.425:
-		var pop := inverse_lerp(AnimationManager.PRESS, 0.425, elapsed)
-		var tension := sin(pop * PI)
-		var opacity := 1.0 - smoothstep(0.48, 1.0, pop)
-		for tile: Vector2i in animation.change.removed:
-			var cell := Rect2(board.position + Vector2(tile) * unit, Vector2.ONE * unit)
-			var style := (tile.x + tile.y * 2) % 3
-			var flight := Vector2((style - 1) * 25, -35 - style * 12) * tension
-			var raised := centered(cell, Vector2(1.0 + tension * (0.05 + style * 0.031), 1.0 + tension * (0.22 - style * 0.08)))
-			art.panel(canvas, shift(raised.grow(-8), Vector2(0, 8)), Color(0.10, 0.02, 0.16, opacity * 0.48), 25)
-			art.cell(canvas, shift(raised, flight), ThemeCatalog.material_at(animation.palette, tile), ClayArt.PRESSED, Color(1.0, 0.99, 0.97, opacity))
+	if elapsed >= AnimationManager.PRESS and elapsed <= 0.47:
+		var progress := inverse_lerp(AnimationManager.PRESS, 0.47, elapsed)
+		var lift := sin(progress * PI * 0.72)
+		var scale := 1.0 + 0.055 * sin(progress * PI) - smoothstep(0.49, 1.0, progress) * 0.14
+		var opacity := 1.0 - smoothstep(0.48, 1.0, progress)
+		var form: Dictionary = animation.change.form
+		var center := animation.stamp_center + Vector2(33 * progress, -unit * 0.65 * lift)
+		var cut_unit := unit * scale
+		var origin := center - Vector2(form.size) * cut_unit / 2.0
+		slab.piece(canvas, form.cells, animation.change.origin, origin, cut_unit,
+			animation.slab_style, Color(Color.WHITE, opacity), unit * lerpf(0.08, 0.18, lift))
 
 func line_offset(change: Dictionary, tile: Vector2i) -> int:
 	var offset := BoardManager.SIZE
@@ -131,10 +188,6 @@ func line_offset(change: Dictionary, tile: Vector2i) -> int:
 			position = BoardManager.SIZE - 1 - position
 		offset = mini(offset, position)
 	return offset
-
-func centered(area: Rect2, stretch: Vector2) -> Rect2:
-	var dimensions := area.size * stretch
-	return Rect2(area.get_center() - dimensions / 2.0, dimensions)
 
 func crack(canvas: CanvasItem, cell: Rect2, intensity: float) -> void:
 	var p := cell.position

@@ -24,6 +24,7 @@ func run_tests() -> void:
 	test_legacy_save()
 	test_locales()
 	test_visual_palette()
+	test_cut_prediction()
 	await test_interface()
 	reset_save()
 	if failures.is_empty():
@@ -263,26 +264,52 @@ func test_visual_palette() -> void:
 	var run := GameManager.new()
 	var storage := SaveManager.new(TEST_SAVE)
 	storage.data.set_value("settings", "material", -1)
-	var palette := ThemeCatalog.active_palette(run, storage)
-	var used: Dictionary = {}
-	for y in BoardManager.SIZE:
-		for x in BoardManager.SIZE:
-			var material := ThemeCatalog.material_at(palette, Vector2i(x, y))
-			used[material] = used.get(material, 0) + 1
-	check(used.size() == palette.size() and palette.size() >= 6, "Default board uses every studio color")
-	check(int(used.values().max()) - int(used.values().min()) <= 1, "Clay colors are balanced across the board")
 	var studio_count := floori(float(ClayArt.STUDIO.get_height()) / ClayArt.TILE)
-	for rank: Array in ThemeCatalog.PALETTES:
-		for material: int in rank:
-			check(material >= 0 and material < ThemeCatalog.STUDIO_START + studio_count, "Rank palette has an atlas row")
+	var warm := ThemeCatalog.slab_style(run, storage)
+	var palette := ThemeCatalog.active_palette(run, storage)
+	for material: int in palette:
+		check(material >= 0 and material < ThemeCatalog.STUDIO_START + studio_count, "Crumb palette has an atlas row")
+	run.mode = GameManager.DAILY
+	var cool := ThemeCatalog.slab_style(run, storage)
+	check(cool != warm and ThemeCatalog.active_palette(run, storage) != palette, "Daily challenge uses cool clay")
+	var art := SlabArt.new()
+	var extent := Rect2(Vector2.ZERO, SlabArt.SHEET.get_size())
+	check(extent.encloses(art.material_rect(warm)) and extent.encloses(art.material_rect(cool)), "Both slabs are present in the atlas")
+	var full := BoardManager.new()
+	check(SlabArt.exposed(full, full.cells, Vector2i(3, 3)) == 0, "Interior clay has no exposed seams")
+	check(SlabArt.exposed(full, full.cells, Vector2i.ZERO) == 9, "Outside corners expose two edges")
+	full.cells[full.index(Vector2i(3, 2))] = 0
+	check(SlabArt.exposed(full, full.cells, Vector2i(3, 3)) == 1, "Removing a cell reveals the neighboring clay edge")
 	storage.data.set_value("settings", "material", 0)
-	check(ThemeCatalog.active_palette(run, storage) == [0], "An explicitly selected material is preserved")
+	check(ThemeCatalog.slab_style(run, storage) == 0 and ThemeCatalog.active_palette(run, storage) == [0],
+		"Chosen material applies to the slab and crumbs")
+
+func test_cut_prediction() -> void:
+	var run := GameManager.new()
+	run.start(GameManager.ENDLESS, "", 135)
+	run.cutters.hand.assign(["single_0", "domino_0", "corner_0"])
+	var hint := run.first_move_hint()
+	check(hint.slot == 0 and run.board.can_cut(hint.cells, hint.origin), "First move highlights a valid footprint")
+	for i in range(1, BoardManager.SIZE):
+		run.board.cells[run.board.index(Vector2i(i, 0))] = 0
+		run.board.cells[run.board.index(Vector2i(0, i))] = 0
+	run.streak = 2
+	var before := run.snapshot()
+	var projection := run.preview_move(0, Vector2i.ZERO)
+	check(projection.completed == [0, BoardManager.SIZE] and projection.points > 10, "Projected cut includes both lines and combo points")
+	check(run.preview_move(0, Vector2i(-1, 0)).is_empty() and run.preview_move(0, Vector2i(1, 0)).is_empty(),
+		"Invalid targets never receive a projection")
+	check(run.snapshot() == before, "Preview does not spend moves or mutate saved state")
+	var cut := run.play(0, Vector2i.ZERO)
+	check(cut.points == projection.points and cut.completed == projection.completed, "Actual score matches the preview")
+	check(run.first_move_hint().is_empty() and run.board.soonest() == 3, "Tutorial retires and the lines enter the normal queue")
 
 func test_interface() -> void:
 	var app: Factory = MAIN.instantiate()
 	app.save = SaveManager.new(TEST_SAVE)
 	app.save.clear_run(GameManager.ENDLESS)
 	app.save.set_setting("language", "en")
+	app.save.data.set_value("stats", "cells", 150)
 	root.add_child(app)
 	await process_frame
 	await process_frame
@@ -312,14 +339,18 @@ func test_interface() -> void:
 	check(app.return_slot == -1 and app.run.cutters.hand[0] == "single_0", "Failed drop returns the original cutter")
 	if DisplayServer.get_name() != "headless":
 		var visible_after := await slot_pixel(app, pixel)
-		check(visible_before.r > visible_before.g + 0.14 and visible_before.b > visible_before.g + 0.04,
-			"The rendered sample is the pink cutter rather than its empty slot")
+		check(visible_before.r > visible_before.g + 0.12,
+			"The rendered sample is the colored cutter rather than its empty slot")
 		check(visible_before.is_equal_approx(visible_after), "Returned cutter is drawn in its slot after the UI becomes idle")
 	await drag_touch(app, app.slots[2].get_center(), Vector2(1018, 1768))
 	await create_timer(Factory.RETURN_DURATION + 0.12).timeout
 	check(app.return_slot == -1 and app.run.cutters.hand[2] == "single_0", "Touch drop below the board also returns its cutter")
-	await drag_mouse(app, left, first + Vector2(0, Factory.UNIT * 0.29))
-	check(app.run.score == 10 and app.animation.active, "Mouse drag cuts then locks")
+	mouse_button(app, left, true)
+	app.pointer_move(InputManager.MOUSE, first + Vector2(0, Factory.UNIT * 0.29))
+	check(app.input.forecast.get("points") == 10 and app.run.score == 0, "Held cutter shows points without scoring")
+	mouse_button(app, first + Vector2(0, Factory.UNIT * 0.29), false)
+	await process_frame
+	check(app.run.score == 10 and app.animation.active and app.input.forecast.is_empty(), "Mouse drag cuts and clears the forecast")
 	await drag_mouse(app, app.slots[1].get_center(), first + Vector2(Factory.UNIT, Factory.UNIT * 0.29))
 	check(app.run.score == 10 and app.run.cutters.hand[1] == "single_0", "Repeated drag during animation cannot double cut")
 	await create_timer(0.57).timeout
@@ -368,6 +399,11 @@ func test_interface() -> void:
 	await process_frame
 	await click(app, Vector2(770, 320))
 	check(app.save.setting("music", false), "Settings toggle via main input route")
+	app.start(GameManager.DAILY, false)
+	app.run.score = 714
+	var daily := app.daily_result_text()
+	check(daily.contains("CLAY FACTORY") and daily.contains(app.run.day) and daily.contains("714"),
+		"Daily share text identifies the game, date, and score")
 	app.queue_free()
 	await process_frame
 

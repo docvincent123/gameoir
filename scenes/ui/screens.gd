@@ -64,9 +64,9 @@ func materials(app) -> void:
 	var face: Rect2 = app.button_face("theme_auto", auto)
 	app.ink(tr("AUTO_THEME"), Rect2(face.position + Vector2(35, 11), Vector2(420, 85)),
 		33, app.INK, HORIZONTAL_ALIGNMENT_LEFT)
-	var palette: Array = ThemeCatalog.PALETTES[0]
-	for index in palette.size():
-		app.art.cell(app, Rect2(face.position + Vector2(474 + index * 72, 22), Vector2(66, 66)), palette[index], 0)
+	for index in 2:
+		var sample := Rect2(face.position + Vector2(674 + index * 115, 24), Vector2(99, 62))
+		app.board.slab.swatch(app, sample, ThemeCatalog.STUDIO_START + index)
 
 	var paints: Array = [app.ROSE, app.SUN, app.SKY, app.MINT, app.PEACH, app.LILAC]
 	for skin in ThemeCatalog.MATERIALS.size():
