@@ -47,7 +47,7 @@ const ACHIEVEMENTS := [
 
 static func selected_material(save: SaveManager) -> int:
 	var choice := int(save.setting("material", -1))
-	if choice >= 0 and choice < MATERIALS.size() and save.best() >= MATERIALS[choice][1]:
+	if choice >= 0 and choice < MATERIALS.size() and Progression.unlocked(save, "material", choice):
 		return choice
 	return -1
 
@@ -72,4 +72,4 @@ static func material_at(palette: Array, cell: Vector2i) -> int:
 
 static func unlocked_choice(save: SaveManager, key: String, options: Array, tally: int) -> int:
 	var choice := clampi(int(save.setting(key, 0)), 0, options.size() - 1)
-	return choice if tally >= options[choice][1] else 0
+	return choice if tally >= options[choice][1] or (key == "metal" and Progression.owns(save, key, choice)) else 0

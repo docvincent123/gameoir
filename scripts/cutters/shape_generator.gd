@@ -58,7 +58,13 @@ func draw_hand(board: BoardManager, tier: int) -> Array[String]:
 		weights.append(weight)
 	var hand: Array[String] = []
 	for slot in 3:
-		hand.append(pool[rng.rand_weighted(weights)])
+		var slot_weights := weights.duplicate()
+		for i in pool.size():
+			if pool[i] in hand:
+				slot_weights[i] *= 0.28
+			if slot == 0 and tier <= 1 and shapes[pool[i]].cells.size() <= 3:
+				slot_weights[i] *= 1.6
+		hand.append(pool[rng.rand_weighted(slot_weights)])
 	if has_move(board, hand):
 		return hand
 	var feasible: Array[String] = []

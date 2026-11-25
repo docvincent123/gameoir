@@ -31,3 +31,6 @@ renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
 textures/canvas_textures/default_texture_filter=2
 environment/defaults/default_clear_color=Color(0.13, 0.071, 0.22, 1)
+
+[clay]
+leaderboard_url=""

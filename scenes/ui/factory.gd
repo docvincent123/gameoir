@@ -60,6 +60,11 @@ var audio := AudioManager.new()
 var board: BoardView
 var menu
 var pages
+var studio = preload("res://scenes/ui/studio_pages.gd").new()
+var pressure_overlay := PressureOverlay.new()
+var online_board := OnlineBoard.new()
+var tutorial_active := false
+var tutorial_hint: Dictionary = {}
 var font := FontVariation.new()
 var heading := FontVariation.new()
 var background: ColorRect
@@ -98,7 +103,7 @@ func _ready() -> void:
 	font.base_font = FONT
 	font.variation_opentype = {WEIGHT_TAG: 620}
 	heading.base_font = FONT
-	heading.variation_opentype = {WEIGHT_TAG: 780}
+	heading.variation_opentype = {WEIGHT_TAG: 820}
 	heading.opentype_features = {0x746e756d: 1}
 	var layer := CanvasLayer.new()
 	layer.layer = -1
@@ -114,6 +119,10 @@ func _ready() -> void:
 	add_child(menu)
 	pages = PAGES.instantiate()
 	add_child(pages)
+	add_child(studio)
+	add_child(online_board)
+	online_board.changed.connect(queue_redraw)
+	add_child(pressure_overlay)
 	add_child(audio)
 	add_child(accent)
 	accent.hide()
@@ -125,8 +134,17 @@ func _ready() -> void:
 func resize() -> void:
 	var extent := get_viewport_rect().size
 	background.size = extent
-	view_scale = minf(extent.x / DESIGN.x, extent.y / DESIGN.y)
-	view_origin = (extent - DESIGN * view_scale) * 0.5
+	var usable := Rect2(Vector2.ZERO, extent)
+	if OS.has_feature("mobile"):
+		var window_size := Vector2(DisplayServer.window_get_size())
+		var safe := DisplayServer.get_display_safe_area()
+		if window_size.x > 0 and window_size.y > 0 and safe.size.x > 0 and safe.size.y > 0:
+			var ratio := extent / window_size
+			var candidate := Rect2(Vector2(safe.position) * ratio, Vector2(safe.size) * ratio).intersection(usable)
+			if candidate.size.x > extent.x * 0.5 and candidate.size.y > extent.y * 0.5:
+				usable = candidate
+	view_scale = minf(usable.size.x / DESIGN.x, usable.size.y / DESIGN.y)
+	view_origin = usable.position + (usable.size - DESIGN * view_scale) * 0.5
 	accent.position = view_origin
 	accent.scale = Vector2.ONE * view_scale
 	queue_redraw()
@@ -156,8 +174,10 @@ func open(screen: String) -> void:
 	hovered = ""
 	input.cancel()
 	return_slot = -1
-	if screen == "menu":
+	if screen == "menu" or screen == "missions":
 		refresh_day()
+	if screen == "online" and online_board.configured():
+		online_board.refresh()
 	if screen == "records":
 		history_page = 0
 	if screen == "collection":
@@ -189,8 +209,11 @@ func start(mode: String, resume: bool) -> void:
 		overlay = "over"
 	banner_age = 2.1
 	best_celebrated = run.score >= 100 and run.score == save.best(run.mode, run.day, run.used_continue)
+	tutorial_active = mode == GameManager.ENDLESS and not bool(save.setting("tutorial_complete", false)) and run.cut_count < 15
+	tutorial_hint = run.coaching_hint() if tutorial_active else {}
 
 func _process(delta: float) -> void:
+	pressure_overlay.update_pressure(self)
 	accent.visible = view == "game" and overlay == "" and not reduced
 	clock += delta
 	if clock >= 600.0:
@@ -326,6 +349,7 @@ func button(id: String, area: Rect2, caption: String, primary := false, small :=
 		tint = tint.lightened(0.17)
 	panel(Rect2(area.position + Vector2(0, 6), area.size).grow(-1), SHADOW, 29)
 	panel(pressed, tint, 29, tint.darkened(0.10), 2)
+	draw_texture_rect(preload("res://assets/ui/studio/button.svg"), pressed, false)
 	var icon_id: StringName = BUTTON_ICONS.get(id, &"")
 	var label := pressed.grow(-13)
 	if show_icon and not icon_id.is_empty():
@@ -364,6 +388,8 @@ func _draw() -> void:
 			menu.render(self)
 		"game":
 			draw_game()
+		"profile", "missions", "shop", "online":
+			studio.render(self)
 		_:
 			pages.render(self)
 	if fade_age < 0.23 and not reduced:
@@ -423,7 +449,7 @@ func draw_game() -> void:
 		var area := Rect2(236, 170 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
 		panel(area, Color(ORDER_PAPER, opacity), 20)
 		ink(banner, area.grow(-8), 26, Color(WARM, opacity))
-	var hint := run.first_move_hint() if show_first_move() else {}
+	var hint := tutorial_hint if tutorial_active else (run.first_move_hint() if show_first_move() else {})
 	var pulse := 0.72 if reduced else 0.57 + sin(clock * 4.2) * 0.16
 	if not hint.is_empty():
 		board.outline(self, GRID, UNIT, hint.cells, hint.origin, Color(TEAL, pulse), true)
@@ -433,6 +459,10 @@ func draw_game() -> void:
 	if not hint.is_empty():
 		panel(slots[hint.slot].grow(3), Color.TRANSPARENT, 24, Color(TEAL, pulse), 3)
 	draw_cut_caption(hint)
+	if tutorial_active and not hint.is_empty():
+		panel(Rect2(65, 1747, 950, 112), PAPER, 24, EDGE)
+		ink(tr("COACH_LINE" if run.cut_count > 0 else "COACH_DRAG"), Rect2(82, 1751, 725, 100), 27, TEAL)
+		button("skip_tutorial", Rect2(822, 1761, 176, 80), tr("SKIP"), false, true)
 	draw_drag(style, metal)
 	particles.render(self, art)
 	if overlay != "":
@@ -720,6 +750,11 @@ func cut(slot: int, anchor: Vector2i) -> void:
 	if change.is_empty():
 		return
 	var changed_best := save.update_move(run, change.removed.size(), change.lines)
+	if tutorial_active:
+		if run.line_count > 0 or run.cut_count >= 20 or run.ended:
+			tutorial_active = false
+			save.set_setting("tutorial_complete", true)
+		tutorial_hint = run.coaching_hint() if tutorial_active else {}
 	var center := GRID.position + (Vector2(anchor) + Vector2(change.form.size) / 2.0) * UNIT
 	start_animation(change, id, center, palette, style)
 	audio.effect("stretch")
@@ -758,6 +793,20 @@ func escape() -> void:
 
 func activate(id: String) -> void:
 	match id:
+		"tutorial":
+			start(GameManager.ENDLESS, true)
+			tutorial_active = not run.ended
+			tutorial_hint = run.coaching_hint()
+		"skip_tutorial":
+			tutorial_active = false
+			tutorial_hint.clear()
+			save.set_setting("tutorial_complete", true)
+		"profile", "missions", "shop", "online":
+			open(id)
+		"online_refresh":
+			online_board.refresh()
+		"online_submit":
+			online_board.submit(save)
 		"play":
 			start(GameManager.ENDLESS, true)
 		"daily":
@@ -783,5 +832,10 @@ func activate(id: String) -> void:
 		"home", "collection", "records", "settings":
 			open("menu" if id == "home" else id)
 		_:
-			pages.activate(self, id)
+			if id.begins_with("claim_"):
+				Progression.claim(save, int(id.get_slice("_", 1)), Time.get_date_string_from_system(true))
+			elif id.begins_with("buy_"):
+				Progression.buy(save, int(id.get_slice("_", 1)))
+			else:
+				pages.activate(self, id)
 	queue_redraw()

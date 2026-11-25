@@ -113,3 +113,28 @@ ALL_LEVELS,All ranks,Усі ранги,Wszystkie rangi,Alle Ränge,Todos los ran
 SHAPE_COUNT,Cutters · %s,Формочки · %s,Foremki · %s,Formen · %s,Moldes · %s,Emporte-pièces · %s
 SHAPE_CELLS,Cells · %d,Клітинки · %d,Pola · %d,Felder · %d,Casillas · %d,Cases · %d
 ORDERS_TOTAL,Orders completed,Замовлень виконано,Wykonane zamówienia,Erledigte Aufträge,Encargos completados,Commandes terminées
+PROFILE,Profile,Профіль,Profil,Profil,Perfil,Profil
+MISSIONS,Missions,Завдання,Misje,Aufgaben,Misiones,Missions
+SHOP,Shop,Магазин,Sklep,Shop,Tienda,Boutique
+ONLINE,World ranking,Світовий рейтинг,Ranking świata,Weltrangliste,Clasificación,Classement
+LEVEL,Level %d,Рівень %d,Poziom %d,Stufe %d,Nivel %d,Niveau %d
+TUTORIAL,Practice,Навчання,Trening,Übung,Práctica,Tutoriel
+DAILY_TASK,DAILY,ЩОДЕННЕ,DZIENNE,TÄGLICH,DIARIO,QUOTIDIEN
+WEEKLY_TASK,WEEKLY,ТИЖНЕВЕ,TYGODNIOWE,WÖCHENTLICH,SEMANAL,HEBDOMADAIRE
+TASK_CELLS,Cut %d cells,Виріж %d клітинок,Wytnij %d pól,Schneide %d Felder,Corta %d casillas,Découpe %d cases
+TASK_LINES,Complete %d lines,Заверши %d ліній,Ukończ %d linii,Schließe %d Reihen ab,Completa %d líneas,Termine %d lignes
+TASK_ORDERS,Finish %d orders,Виконай %d замовлень,Ukończ %d zamówień,Erfülle %d Aufträge,Completa %d pedidos,Termine %d commandes
+CLAIM,Claim,Забрати,Odbierz,Abholen,Recoger,Recevoir
+CLAIMED,Claimed,Отримано,Odebrano,Abgeholt,Recogido,Reçu
+OWNED,Owned,Відкрито,Posiadane,Freigeschaltet,Obtenido,Acquis
+BUY,Buy,Купити,Kup,Kaufen,Comprar,Acheter
+REFRESH,Refresh,Оновити,Odśwież,Aktualisieren,Actualizar,Actualiser
+SUBMIT_BEST,Submit best,Надіслати рекорд,Wyślij rekord,Bestwert senden,Enviar récord,Envoyer record
+ONLINE_NOTE,Community scores • not verified,Рекорди спільноти • без перевірки,Wyniki bez weryfikacji,Ungeprüfte Ergebnisse,Récords sin verificar,Scores non vérifiés
+ONLINE_OFFLINE,Server not configured,Сервер не налаштовано,Brak serwera,Server nicht eingerichtet,Servidor sin configurar,Serveur non configuré
+ONLINE_READY,Community leaderboard,Рейтинг спільноти,Ranking społeczności,Community-Rangliste,Clasificación comunitaria,Classement communautaire
+ONLINE_LOADING,Loading…,Завантаження…,Ładowanie…,Laden…,Cargando…,Chargement…
+ONLINE_ERROR,Could not connect,Не вдалося підключитися,Błąd połączenia,Verbindung fehlgeschlagen,Error de conexión,Connexion impossible
+COACH_DRAG,Drag the highlighted cutter onto the outline,Перетягни підсвічену формочку на контур,Przeciągnij formę na obrys,Ziehe die Form auf den Umriss,Arrastra el molde al contorno,Glisse le moule sur le contour
+COACH_LINE,Follow the guide to complete a line,Вирізай за підказкою щоб завершити лінію,Ukończ linię według wskazówki,Folge dem Hinweis für eine Reihe,Sigue la guía para completar una línea,Suis le guide pour terminer une ligne
+SKIP,Skip,Пропустити,Pomiń,Überspringen,Omitir,Passer

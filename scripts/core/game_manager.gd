@@ -149,3 +149,25 @@ func restore(data: Dictionary) -> bool:
 	if not ended:
 		refresh_availability()
 	return true
+
+# Deterministic coaching: prefer a line, then an order, then a larger cut.
+func coaching_hint() -> Dictionary:
+	if ended:
+		return {}
+	var best_hint: Dictionary = {}
+	var best_value := -1
+	for slot in cutters.hand.size():
+		var form := cutters.shape(slot)
+		if form.is_empty():
+			continue
+		for y in range(BoardManager.SIZE - form.size.y + 1):
+			for x in range(BoardManager.SIZE - form.size.x + 1):
+				var origin := Vector2i(x, y)
+				var change := preview_move(slot, origin)
+				if change.is_empty():
+					continue
+				var value: int = change.completed.size() * 100 + change.order.bonus + change.removed.size()
+				if value > best_value:
+					best_value = value
+					best_hint = {"slot": slot, "cells": form.cells, "origin": origin}
+	return best_hint
