@@ -67,7 +67,7 @@ func collection(app) -> void:
 		var option: Array = variants[i]
 		var top := 468 if key == "metal" else 390
 		var card := Rect2(76, top + i * 287, 928, 243)
-		var unlocked := tally >= int(option[1])
+		var unlocked := tally >= int(option[1]) or (key == "metal" and Progression.owns(app.save, key, i))
 		var paint: Color = paints[(i + app.collection_tab) % paints.size()]
 		if key == "effect" and not unlocked:
 			paint = paint.lerp(app.PAPER, 0.35)
@@ -137,7 +137,7 @@ func materials(app) -> void:
 		var col := skin % 4
 		var row := floori(float(skin) / 4.0)
 		var card := Rect2(53 + 246 * col, 482 + 325 * row, 236, 279)
-		var unlocked: bool = app.save.best() >= int(item[1])
+		var unlocked: bool = Progression.unlocked(app.save, "material", skin, int(item[1]))
 		var id := "skin_%d" % skin
 		var tint: Color = paints[skin % paints.size()]
 		app.button(id, card, "", selected == skin, false, not unlocked, app.MINT if selected == skin else app.PAPER)

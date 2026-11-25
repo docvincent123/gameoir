@@ -54,3 +54,15 @@ godot --headless --path . --script tests/run.gd
 ```
 
 Тести виконують правила сітки для всіх 161 варіанта формочок, передогляд очок і замовлень без зміни стану гри, відкладене відновлення і перетини, пороги рахунку, програш із лініями в черзі, повернення формочки після невдалого перетягування, комбо, справедливість видачі, локалізації, відновлення черги зі збереження та перетягування мишею й дотиком. Щоб також виконати їх із графічним вікном, приберіть `--headless` із другої команди. Підпис, швидкодію й тактильний відгук на фізичних Android та iOS пристроях потрібно перевірити перед публікацією.
+
+## 2.0 preview
+New profile, coin-funded cosmetics, daily/weekly missions, contextual coaching, pressure shader, mobile safe-area layout and optional community ranking. Existing local records and unlock thresholds are retained. Daily seed remains deterministic for this version, but the revised shape weights change hands relative to older versions. Leaderboard is opt-in, client-reported and not hosted by default; see server/README.md. Import the CSV translations in Godot before running. Physical device and CI validation remain necessary.
+
+## 2.0.1 premium visual preview
+New vector brand emblem, factory illustration, layered jade/gold HUD, cream/gold frame and tray, nine-slice buttons, MSDF font, crisp cell highlights, white order guides and floating point/combo effects. Board layout and hit regions remain unchanged. The reference is visual inspiration; the UI is drawn live, not a flattened screenshot. Device rendering remains unverified.
+
+## 2.0.2 text rendering hotfix
+Use grayscale rasterized Manrope rather than MSDF, supported font weights, linear canvas filtering, bounded font sizing on both axes, and simple text shadows instead of overlapping outlines. Small HUD chips no longer use nine-slice margins larger than their height. On an existing checkout close Godot, remove only the project's `.godot` import cache, then reopen `project.godot`. Saved games are stored separately in `user://`.
+
+## 2.1 Soft Pop visual redesign
+Replaces the gold workshop look with lavender, matte clay, a recessed purple board, a large unboxed score, softer controls, fresh hero artwork and compact navigation. Existing game rules, cosmetics, safe-area mapping, progress, saves and input regions remain intact. The 2.0.2 font compatibility fix remains. Visual device verification is still required.

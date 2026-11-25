@@ -1,8 +1,8 @@
 extends Node2D
 
-const HERO := preload("res://assets/ui/hero.png")
-const PLAY_AREA := Rect2(177, 1118, 726, 136)
-const DAILY_AREA := Rect2(224, 1286, 632, 104)
+const HERO := PremiumArt.FACTORY
+const PLAY_AREA := Rect2(102, 1070, 876, 154)
+const DAILY_AREA := Rect2(165, 1251, 750, 110)
 const NAVIGATION := [
 	["collection", "COLLECTION", &"collection"],
 	["records", "RECORDS", &"trophy"],
@@ -11,43 +11,32 @@ const NAVIGATION := [
 
 func render(app) -> void:
 	var current: bool = app.save.has_active_run(GameManager.ENDLESS, app.day)
-	var floating: float = sin(app.clock * 1.45) * 6.0 if not app.reduced else 0.0
-	app.panel(Rect2(306, 268, 468, 470), Color("#eee8d5", 0.62), 208)
-	var scale := minf(650.0 / HERO.get_width(), 510.0 / HERO.get_height())
-	var size := HERO.get_size() * scale
-	app.draw_texture_rect(HERO, Rect2(Vector2((1080.0 - size.x) / 2.0, 498.0 - size.y / 2.0 + floating), size), false)
-
-	var title := "%s %s" % [tr("TITLE_TOP"), tr("TITLE_BOTTOM")]
-	app.ink(title, Rect2(100, 782, 880, 138), 102)
-	app.ink(tr("ENDLESS"), Rect2(126, 917, 828, 61), 35, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
-
+	var floating: float = sin(app.clock * 1.6) * 9.0 if not app.reduced else 0.0
+	app.draw_texture_rect(PremiumArt.EMBLEM, Rect2(58, 55, 106, 106), false)
+	app.register_button("profile", Rect2(55, 52, 465, 112))
+	app.ink(tr("LEVEL") % Progression.level(app.save), Rect2(177, 65, 345, 90), 40, app.INK, HORIZONTAL_ALIGNMENT_LEFT)
+	app.studio.wallet(app, Rect2(675, 63, 345, 94))
+	app.brand(Rect2(70, 188, 940, 290), false)
+	app.ink(tr("ENDLESS"), Rect2(190, 489, 700, 58), 40, app.MUTED)
+	app.draw_texture_rect(HERO, Rect2(100, 539 + floating, 880, 490), false)
 	app.register_button("play", PLAY_AREA)
 	var play: Rect2 = app.button_face("play", PLAY_AREA)
-	var green: Color = app.SCORE_PLATE.lightened(0.12) if app.hovered == "play" else app.SCORE_PLATE
-	app.panel(Rect2(PLAY_AREA.position + Vector2(0, 8), PLAY_AREA.size), Color("#173c31"), 42)
-	app.panel(play, green, 42)
-	app.ink(tr("RESUME") if current else tr("PLAY"), Rect2(play.position + Vector2(46, 0), Vector2(play.size.x - 110, play.size.y)), 48, app.PAPER)
-	app.art.icon(app, &"next", play.end - Vector2(65, play.size.y / 2), 42.0, app.PAPER)
-
-	app.register_button("daily", DAILY_AREA)
-	var daily: Rect2 = app.button_face("daily", DAILY_AREA)
-	app.panel(daily, Color("#f2eddf") if app.hovered == "daily" else Color("#fffbee"), 33, Color("#c9d4c9"), 2)
-	app.ink(tr("DAILY"), daily.grow(-19), 34)
-	var daily_icon := &"clock" if app.save.has_active_run(GameManager.DAILY, app.day) else &"calendar"
-	app.art.icon(app, daily_icon, daily.position + Vector2(62, 51), 43)
-
-	app.card(Rect2(55, 1519, 970, 177), Color("#fbf8ef"))
-	for index in NAVIGATION.size():
-		var entry: Array = NAVIGATION[index]
-		var area := Rect2(72 + index * 316, 1542, 304, 146)
-		app.register_button(entry[0], area)
-		var face: Rect2 = app.button_face(entry[0], area)
-		if app.hovered == entry[0]:
-			app.panel(face, Color("#f1eadc"), 32)
-		app.art.icon(app, entry[2], face.position + Vector2(152, 47), 68)
-		app.ink(tr(entry[1]), Rect2(face.position + Vector2(12, 86), Vector2(280, 50)), 30)
-
+	app.premium.button(app, play, true)
+	app.ink(tr("RESUME") if current else tr("PLAY"), play.grow(-32), 66, app.PAPER)
+	app.art.icon(app, &"next", play.end - Vector2(66, play.size.y / 2), 52, app.PAPER)
+	app.button("daily", DAILY_AREA, tr("DAILY"), false)
 	var best: int = app.save.best()
 	if best > 0:
-		app.ink("%s  %s" % [tr("BEST"), app.group_int(best)], Rect2(100, 1752, 880, 42), 29, app.TEAL)
-	app.ink(tr("CREDIT"), Rect2(72, 1824, 936, 42), 25, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+		app.ink("%s  %s" % [tr("BEST"), app.group_int(best)], Rect2(100, 1383, 880, 58), 38, app.MUTED)
+	var quick: Array = [["missions", "MISSIONS"], ["shop", "SHOP"], ["online", "ONLINE"]]
+	for i in quick.size():
+		var entry: Array = quick[i]
+		app.studio.tile(app, entry[0], Rect2(64 + 320 * i, 1460, 308, 154), tr(entry[1]))
+	app.panel(Rect2(43, 1655, 994, 205), app.PAPER, 52)
+	for i in NAVIGATION.size():
+		var entry: Array = NAVIGATION[i]
+		var area := Rect2(65 + i * 322, 1670, 306, 173)
+		app.register_button(entry[0], area)
+		var face: Rect2 = app.button_face(entry[0], area)
+		app.art.icon(app, entry[2], face.position + Vector2(153, 58), 75.0)
+		app.ink(tr(entry[1]), Rect2(face.position + Vector2(10, 102), Vector2(286, 55)), 34, app.INK)

@@ -3,8 +3,8 @@ extends Node2D
 
 const VALID := Color("#146752")
 const INVALID := Color("#a82a58")
-const GRID_INK := Color(0.29, 0.17, 0.14, 0.22)
-const DEPTH := Color(0.52, 0.31, 0.23, 0.72)
+const GRID_INK := Color(0.23, 0.13, 0.32, 0.16)
+const DEPTH := Color(0.20, 0.13, 0.29, 0.70)
 
 var slab := SlabArt.new()
 
@@ -14,9 +14,9 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, st
 	var unit := frame.size.x / BoardManager.SIZE
 	var board := frame
 	board.position += animation.displace(run.streak, reduced)
-	var frame_tint := workshop.lerp(Color.WHITE, 0.90).darkened(over * 0.24)
-	art.panel(canvas, shift(board.grow(48), Vector2(0, 11)), Color(0.30, 0.22, 0.15, 0.19), 48)
-	canvas.draw_texture_rect(ClayArt.FRAME, board.grow(49), false, frame_tint)
+	var frame_tint := Color.WHITE.darkened(over * 0.24)
+	art.panel(canvas, shift(board.grow(48), Vector2(0, 11)), Color(0.30, 0.22, 0.50, 0.12), 48)
+	canvas.draw_texture_rect(PremiumArt.FRAME, board.grow(49), false, frame_tint)
 
 	var visible := visible_clay(run.board, animation)
 	var whole := Color.WHITE.darkened(over * 0.24)
@@ -28,6 +28,7 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, st
 			var index := run.board.index(tile)
 			var cell := cell_rect(board, tile, unit)
 			if visible[index] == 0:
+				art.panel(canvas, cell.grow(-4), Color("#55466f"), 12, Color("#64537f"), 2)
 				if run.board.pending[y] > 0 or run.board.pending[BoardManager.SIZE + x] > 0:
 					canvas.draw_rect(cell, Color(0.96, 0.62, 0.28, 0.15))
 				continue
@@ -44,8 +45,12 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, st
 			var cell := cell_rect(board, tile, unit)
 			var pressed: bool = animation.active and animation.elapsed < AnimationManager.PRESS and tile in animation.change.removed
 			var shade := whole.darkened(0.13 * clampf(animation.elapsed / AnimationManager.PRESS, 0, 1)) if pressed else whole
-			slab.face(canvas, cell, tile, animation.slab_style if pressed else style, edges[index], shade)
-			slab.bevel(canvas, cell, edges[index], 1.0)
+			var active_style := animation.slab_style if pressed else style
+			slab.face(canvas, cell, tile, active_style, edges[index], shade)
+			var matte := soft_color(active_style)
+			slab.base(canvas, cell, edges[index], Color(matte.darkened(0.12 if pressed else 0.0), 0.47))
+			slab.bevel(canvas, cell, edges[index], 0.8)
+			canvas.draw_texture_rect(PremiumArt.CELL, cell.grow(-1), false, Color(1, 1, 1, 0.55))
 			if over > 0.12 and edges[index] > 0 and (x * 7 + y * 3) % 4 == 0:
 				crack(canvas, cell, over * 0.46)
 
@@ -56,17 +61,21 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, st
 		if not reduced:
 			refill_trails(canvas, art, board, unit, animation)
 	if not run.order.cells.is_empty() and not (animation.active and animation.change.order.bonus > 0):
-		var mark := Color("#28634b") if run.order.clean else Color("#77532d")
+		var mark := Color("#ffffff") if run.order.clean else Color("#ffd18c")
 		outline(canvas, board, unit, run.order.cells, Vector2i.ZERO, Color(mark, 0.88), true)
 		for tile: Vector2i in run.order.cells:
 			if visible[run.board.index(tile)] != 0:
 				var spot := cell_rect(board, tile, unit).get_center()
-				canvas.draw_circle(spot, 7.0, Color("#fff3db"), true, -1.0, true)
-				canvas.draw_circle(spot, 4.0, mark, true, -1.0, true)
+				canvas.draw_circle(spot, 9.0, Color("#244c38"), true, -1.0, true)
+				canvas.draw_circle(spot, 8.0, mark, false, 3.0, true)
 	var form := run.cutters.shape(input.slot)
 	if input.touched_board and not form.is_empty():
 		outline(canvas, board, unit, form.cells, input.anchor, VALID if input.valid else INVALID, false)
 	draw_queue(canvas, art, run.board, board, unit, numbers)
+
+static func soft_color(style: int) -> Color:
+	var swatches := ["#f5ab8e", "#d7b4ed", "#8877cf", "#e8bd6b", "#e5e1f0", "#eeb4d3", "#b7b2fa", "#e9a3a6", "#d1a68f", "#a1d8e3", "#ed8e83", "#a8d2ed", "#8ddbc5", "#e0c4e9", "#e7bb8d", "#a9c4ee", "#f5ab8e", "#91d9c5", "#a7c8ec", "#c5b9ed", "#f3b4c9", "#a9d9d1"]
+	return Color(swatches[clampi(style, 0, swatches.size() - 1)])
 
 func visible_clay(board: BoardManager, animation: AnimationManager) -> PackedByteArray:
 	var cells := board.cells.duplicate()
@@ -102,8 +111,8 @@ func draw_grid(canvas: CanvasItem, board: Rect2, unit: float) -> void:
 		var offset := float(i) * unit
 		var x := board.position.x + offset
 		var y := board.position.y + offset
-		canvas.draw_line(Vector2(x, board.position.y + 3), Vector2(x, board.end.y - 3), GRID_INK, 1.25, true)
-		canvas.draw_line(Vector2(board.position.x + 3, y), Vector2(board.end.x - 3, y), GRID_INK, 1.25, true)
+		canvas.draw_line(Vector2(x, board.position.y + 3), Vector2(x, board.end.y - 3), GRID_INK, 2.3, true)
+		canvas.draw_line(Vector2(board.position.x + 3, y), Vector2(board.end.x - 3, y), GRID_INK, 2.3, true)
 
 func outline(canvas: CanvasItem, board: Rect2, unit: float, shape: Array,
 		origin: Vector2i, tint: Color, guide: bool) -> void:
@@ -120,7 +129,8 @@ func outline(canvas: CanvasItem, board: Rect2, unit: float, shape: Array,
 				continue
 			var path := SlabArt.edge_points(cell, side)
 			if guide:
-				canvas.draw_dashed_line(path[0], path[1], tint, 4.0, 17.0, true)
+				canvas.draw_dashed_line(path[0], path[1], Color(0.10, 0.25, 0.18, 0.65), 8.0, 17.0, true)
+				canvas.draw_dashed_line(path[0], path[1], tint, 5.0, 17.0, true)
 			else:
 				canvas.draw_line(path[0], path[1], Color("#fff5dc"), 9.0, true)
 				canvas.draw_line(path[0], path[1], tint, 4.8, true)
@@ -172,7 +182,8 @@ func stamp(canvas: CanvasItem, art: ClayArt, unit: float,
 		art.cutter(canvas, animation.stamp_id, center, unit * lerpf(1.025, 1.0, pressing), Color(metal, fade))
 	if not reduced and elapsed >= AnimationManager.PRESS and elapsed < 0.44:
 		var bloom := inverse_lerp(AnimationManager.PRESS, 0.44, elapsed)
-		var alpha := sin(bloom * PI) * 0.66
+		var alpha := sin(bloom * PI) * 0.90
+		PremiumArt.sparkle(canvas, animation.stamp_center, unit * (0.7 + bloom * 1.6), alpha)
 		art.effect(canvas, ClayArt.CUT_PULSES[animation.cut_effect], animation.stamp_center,
 			unit * lerpf(0.7, 2.3, bloom), Color(Color.WHITE, alpha))
 	if elapsed >= AnimationManager.PRESS and elapsed <= 0.47:

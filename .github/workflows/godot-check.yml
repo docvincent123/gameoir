@@ -1,0 +1,10 @@
+name: Godot smoke tests
+on: [push, pull_request]
+jobs:
+  headless:
+    runs-on: ubuntu-latest
+    container: barichello/godot-ci:4.4.1
+    steps:
+      - uses: actions/checkout@v4
+      - run: godot --headless --editor --import --path . --quit
+      - run: godot --headless --path . --script tests/run.gd

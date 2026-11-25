@@ -97,6 +97,7 @@ func update_move(run: GameManager, cells: int, lines: int) -> bool:
 	var added := maxi(0, run.order.completed - previous_orders)
 	if added > 0:
 		data.set_value("stats", "orders", stat("orders") + added)
+	Progression.on_move(self, cells, lines, added)
 	if run.ended:
 		record(run)
 	store_run(run)

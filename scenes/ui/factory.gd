@@ -9,28 +9,28 @@ const HABITAT := preload("res://scenes/gameplay/gameplay.tscn")
 const WORKSHOP := preload("res://scenes/menu/menu.tscn")
 const PAGES := preload("res://scenes/ui/screens.tscn")
 
-const INK := Color("#1f332e")
-const MUTED := Color("#53685e")
-const TEAL := Color("#176452")
-const WARM := Color("#86502d")
-const PAPER := Color("#fbfaf5")
-const MINT := Color("#d1ebde")
-const ROSE := Color("#f4d8d6")
-const SKY := Color("#dceaf2")
-const LILAC := Color("#e8e1f3")
-const SUN := Color("#fae6b8")
-const PEACH := Color("#f7e0d0")
-const GILT := Color("#ffe093")
-const EDGE := Color("#d8dfd3")
+const INK := Color("#302544")
+const MUTED := Color("#74688a")
+const TEAL := Color("#7355d6")
+const WARM := Color("#8e557d")
+const PAPER := Color("#ffffff")
+const MINT := Color("#e7ddff")
+const ROSE := Color("#fbe0eb")
+const SKY := Color("#e1e9ff")
+const LILAC := Color("#eee6ff")
+const SUN := Color("#ffe9c9")
+const PEACH := Color("#ffe0d2")
+const GILT := Color("#ffdb89")
+const EDGE := Color("#e1d7f2")
 const SHADOW := Color(0.20, 0.29, 0.24, 0.10)
-const SCORE_PLATE := Color("#234b3f")
-const SCORE_LABEL := Color("#cfe5d8")
-const ORDER_PAPER := Color("#f8e7c8")
+const SCORE_PLATE := Color("#6748d5")
+const SCORE_LABEL := Color("#e7dcff")
+const ORDER_PAPER := Color("#f1e6ff")
 const GRID := Rect2(88, 507, 904, 904)
 const TRAY := Rect2(62, 1500, 956, 234)
 const UNIT := GRID.size.x / BoardManager.SIZE
 const RETURN_DURATION := 0.30
-const SLOT_PREVIEW := Vector2(224, 129)
+const SLOT_PREVIEW := Vector2(230, 151)
 const BUTTON_ICONS := {
 	"play": &"play", "daily": &"calendar", "collection": &"collection",
 	"records": &"trophy", "settings": &"settings", "pause": &"pause", "back": &"arrow_left",
@@ -52,6 +52,7 @@ var day := ""
 var save := SaveManager.new()
 var run: GameManager
 var art := ClayArt.new()
+var premium := PremiumArt.new()
 var input := InputManager.new()
 var animation := AnimationManager.new()
 var particles := ParticleManager.new()
@@ -60,6 +61,13 @@ var audio := AudioManager.new()
 var board: BoardView
 var menu
 var pages
+var studio = preload("res://scenes/ui/studio_pages.gd").new()
+var pressure_overlay := PressureOverlay.new()
+var online_board := OnlineBoard.new()
+var tutorial_active := false
+var tutorial_hint: Dictionary = {}
+var tutorial_start_lines := 0
+var tutorial_start_cells := 0
 var font := FontVariation.new()
 var heading := FontVariation.new()
 var background: ColorRect
@@ -76,6 +84,10 @@ var view_origin := Vector2.ZERO
 var view_scale := 1.0
 var clock := 0.0
 var score_face := 0.0
+var pop_age := 2.0
+var pop_points := 0
+var pop_center := Vector2.ZERO
+var pop_combo := 0
 var score_tween: Tween
 var fade_age := 1.0
 var over_age := 0.0
@@ -95,8 +107,9 @@ var slots: Array[Rect2] = [Rect2(86, 1523, 284, 185), Rect2(398, 1523, 284, 185)
 func _ready() -> void:
 	get_tree().quit_on_go_back = false
 	Engine.max_fps = 60
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	font.base_font = FONT
-	font.variation_opentype = {WEIGHT_TAG: 620}
+	font.variation_opentype = {WEIGHT_TAG: 650}
 	heading.base_font = FONT
 	heading.variation_opentype = {WEIGHT_TAG: 780}
 	heading.opentype_features = {0x746e756d: 1}
@@ -114,6 +127,10 @@ func _ready() -> void:
 	add_child(menu)
 	pages = PAGES.instantiate()
 	add_child(pages)
+	add_child(studio)
+	add_child(online_board)
+	online_board.changed.connect(queue_redraw)
+	add_child(pressure_overlay)
 	add_child(audio)
 	add_child(accent)
 	accent.hide()
@@ -125,8 +142,17 @@ func _ready() -> void:
 func resize() -> void:
 	var extent := get_viewport_rect().size
 	background.size = extent
-	view_scale = minf(extent.x / DESIGN.x, extent.y / DESIGN.y)
-	view_origin = (extent - DESIGN * view_scale) * 0.5
+	var usable := Rect2(Vector2.ZERO, extent)
+	if OS.has_feature("mobile"):
+		var window_size := Vector2(DisplayServer.window_get_size())
+		var safe := DisplayServer.get_display_safe_area()
+		if window_size.x > 0 and window_size.y > 0 and safe.size.x > 0 and safe.size.y > 0:
+			var ratio := extent / window_size
+			var candidate := Rect2(Vector2(safe.position) * ratio, Vector2(safe.size) * ratio).intersection(usable)
+			if candidate.size.x > extent.x * 0.5 and candidate.size.y > extent.y * 0.5:
+				usable = candidate
+	view_scale = minf(usable.size.x / DESIGN.x, usable.size.y / DESIGN.y)
+	view_origin = usable.position + (usable.size - DESIGN * view_scale) * 0.5
 	accent.position = view_origin
 	accent.scale = Vector2.ONE * view_scale
 	queue_redraw()
@@ -156,8 +182,10 @@ func open(screen: String) -> void:
 	hovered = ""
 	input.cancel()
 	return_slot = -1
-	if screen == "menu":
+	if screen == "menu" or screen == "missions":
 		refresh_day()
+	if screen == "online" and online_board.configured():
+		online_board.refresh()
 	if screen == "records":
 		history_page = 0
 	if screen == "collection":
@@ -185,17 +213,24 @@ func start(mode: String, resume: bool) -> void:
 		score_tween.kill()
 	score_face = run.score
 	over_age = 1.0 if run.ended else 0.0
+	pop_age = 2.0
 	if run.ended:
 		overlay = "over"
 	banner_age = 2.1
 	best_celebrated = run.score >= 100 and run.score == save.best(run.mode, run.day, run.used_continue)
+	tutorial_active = mode == GameManager.ENDLESS and not bool(save.setting("tutorial_complete", false)) and run.cut_count < 15
+	tutorial_hint = run.coaching_hint() if tutorial_active else {}
+	tutorial_start_lines = run.line_count
+	tutorial_start_cells = run.cut_count
 
 func _process(delta: float) -> void:
+	pop_age = minf(2.0, pop_age + delta)
+	pressure_overlay.update_pressure(self)
 	accent.visible = view == "game" and overlay == "" and not reduced
 	clock += delta
 	if clock >= 600.0:
 		clock -= 600.0
-	var needs_redraw := fade_age < 0.3 or (view == "menu" and not reduced)
+	var needs_redraw := fade_age < 0.3 or (view == "menu" and not reduced) or (view == "game" and pop_age < 1.0)
 	fade_age = minf(0.3, fade_age + delta)
 	if not overlay.is_empty() and not reduced and overlay_age < 0.24:
 		overlay_age = minf(0.24, overlay_age + delta)
@@ -255,7 +290,7 @@ func announce_completion() -> void:
 		announce(line)
 	if order.bonus > 0 or run.streak >= 2 or animation.change.lines >= 2:
 		audio.effect("combo")
-		particles.burst(animation.stamp_center, 7 if reduced else 23, animation.palette[0], GILT, true, 1.05)
+		particles.burst(animation.stamp_center, 7 if reduced else 42, animation.palette[0], GILT, true, 1.05)
 
 func animate_refill() -> void:
 	audio.effect("refill")
@@ -273,7 +308,7 @@ func burst_cut() -> void:
 	for cell: Vector2i in animation.change.removed:
 		var center := GRID.position + (Vector2(cell) + Vector2(0.5, 0.35)) * UNIT
 		var material := ThemeCatalog.material_at(animation.palette, cell)
-		particles.burst(center, 2 if reduced else 5, material, Color.WHITE, false, 0.72)
+		particles.burst(center, 2 if reduced else 8, material, Color.WHITE, false, 0.72)
 		if not reduced:
 			var sprite: ClayArt.Effect = [ClayArt.Effect.CHIP, ClayArt.Effect.GLINT, ClayArt.Effect.DROP][fx]
 			particles.burst(center, 1 if fx == 0 else 3, material, Color.WHITE.lerp(color, 0.22), fx > 0, 0.81, sprite)
@@ -285,19 +320,42 @@ func announce(caption: String, stamp := -1) -> void:
 
 func ink(value: String, area: Rect2, size: int, color := INK, align := HORIZONTAL_ALIGNMENT_CENTER, bold := true) -> void:
 	var typeface := heading if bold else font
-	var pixels := size
-	var measured := typeface.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels).x
-	if measured > area.size.x:
-		pixels = maxi(16, int(float(size) * area.size.x / measured))
+	var pixels := fitted_font(typeface, value, area, size)
 	var baseline := area.get_center().y + (typeface.get_ascent(pixels) - typeface.get_descent(pixels)) / 2.0
-	draw_string(typeface, Vector2(area.position.x, baseline), value, align, area.size.x, pixels, color)
+	var origin := Vector2(area.position.x, baseline)
+	draw_string(typeface, origin, value, align, area.size.x, pixels, color)
+
+func fitted_font(typeface: Font, value: String, area: Rect2, requested: int) -> int:
+	var pixels := maxi(12, requested)
+	var measured := typeface.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels).x
+	var height := typeface.get_height(pixels)
+	var factor := minf(1.0, minf(area.size.x / maxf(1.0, measured), area.size.y / maxf(1.0, height)))
+	return maxi(12, floori(pixels * factor))
+
+func embossed(value: String, area: Rect2, size: int, color: Color, border_color: Color, align := HORIZONTAL_ALIGNMENT_CENTER) -> void:
+	var pixels := fitted_font(heading, value, area, size)
+	var baseline := area.get_center().y + (heading.get_ascent(pixels) - heading.get_descent(pixels)) / 2.0
+	var pos := Vector2(area.position.x, baseline)
+	# Do not draw overlapping glyph outlines: variable font contours can produce
+	# broken strokes in MSDF and Compatibility rendering.
+	var shadow := Color(border_color, color.a * 0.46)
+	draw_string(heading, pos + Vector2(0, 3), value, align, area.size.x, pixels, shadow)
+	draw_string(heading, pos, value, align, area.size.x, pixels, color)
+
+func brand(area: Rect2, compact: bool) -> void:
+	if compact:
+		ink("%s %s" % [tr("TITLE_TOP"), tr("TITLE_BOTTOM")], area, 42, INK)
+		return
+	var half := area.size.y * 0.5
+	ink(tr("TITLE_TOP").to_upper(), Rect2(area.position, Vector2(area.size.x, half)), 176, INK)
+	ink(tr("TITLE_BOTTOM").to_upper(), Rect2(area.position + Vector2(0, half), Vector2(area.size.x, half)), 126, TEAL)
 
 func panel(area: Rect2, color: Color, radius: int, edge := Color.TRANSPARENT, border := 2) -> void:
 	art.panel(self, area, color, radius, edge, border)
 
 func card(area: Rect2, tint := PAPER) -> void:
 	panel(Rect2(area.position + Vector2(0, 5), area.size).grow(-1), SHADOW, 29)
-	panel(area, tint, 29, tint.darkened(0.09), 2)
+	panel(area, tint, 36)
 
 func progress_bar(area: Rect2, progress: float, track: Color, fill: Color) -> void:
 	panel(area, track, roundi(area.size.y / 2.0))
@@ -324,8 +382,11 @@ func button(id: String, area: Rect2, caption: String, primary := false, small :=
 		tint = tint.lerp(Color("#f0e5db"), 0.42)
 	elif hovered == id:
 		tint = tint.lightened(0.17)
-	panel(Rect2(area.position + Vector2(0, 6), area.size).grow(-1), SHADOW, 29)
-	panel(pressed, tint, 29, tint.darkened(0.10), 2)
+	if paint.a == 0.0 and not locked:
+		premium.button(self, pressed, primary)
+	else:
+		panel(Rect2(area.position + Vector2(0, 6), area.size).grow(-1), SHADOW, 29)
+		panel(pressed, tint, 34)
 	var icon_id: StringName = BUTTON_ICONS.get(id, &"")
 	var label := pressed.grow(-13)
 	if show_icon and not icon_id.is_empty():
@@ -337,7 +398,7 @@ func button(id: String, area: Rect2, caption: String, primary := false, small :=
 			label.position.x += inset
 			label.size.x -= inset
 	if not caption.is_empty():
-		ink(caption, label, 32 if small else 44, MUTED if locked else INK)
+		ink(caption, label, 36 if small else 48, MUTED if locked else (PAPER if primary and paint.a == 0.0 else INK))
 
 func header(key: StringName) -> void:
 	button("back", Rect2(55, 79, 185, 81), tr("BACK"), false, true)
@@ -364,6 +425,8 @@ func _draw() -> void:
 			menu.render(self)
 		"game":
 			draw_game()
+		"profile", "missions", "shop", "online":
+			studio.render(self)
 		_:
 			pages.render(self)
 	if fade_age < 0.23 and not reduced:
@@ -373,70 +436,85 @@ func draw_game() -> void:
 	var style := ThemeCatalog.slab_style(run, save)
 	var active_metal := ThemeCatalog.unlocked_choice(save, "metal", ThemeCatalog.CUTTERS, save.stat("cells"))
 	var metal: Color = ThemeCatalog.CUTTERS[active_metal][2]
-	var title := tr("TITLE_TOP") + " " + tr("TITLE_BOTTOM")
-	ink(title, Rect2(136, 64, 718, 68), 43, INK, HORIZONTAL_ALIGNMENT_LEFT)
-	var mode := tr("DAILY") if run.mode == GameManager.DAILY else tr("ENDLESS")
-	if run.used_continue:
-		mode = tr("ASSISTED")
+	# Quiet header, large score, no dashboard card or decorative brand in play.
 	var rank := tr(DifficultyManager.RANKS[run.tier()])
 	var active_order := not run.order.cells.is_empty()
-	if active_order:
-		mode = "%s · %s" % [mode, rank]
-	ink(mode, Rect2(138, 128, 690, 45), 26, MUTED, HORIZONTAL_ALIGNMENT_LEFT, false)
-	button("pause", Rect2(914, 72, 99, 96), "", false, false, false, PAPER)
-	panel(Rect2(63, 82, 55, 55), Color("#e0ece0"), 18)
-	art.icon(self, &"cutter", Vector2(90, 109), 50.0, TEAL)
-
-	var meter := Rect2(60, 204, 960, 188)
-	panel(Rect2(meter.position + Vector2(0, 7), meter.size), SHADOW, 37)
-	panel(meter, SCORE_PLATE, 37, Color("#355c4e"), 2)
-	draw_line(Vector2(617, 229), Vector2(617, 367), Color("#57776a"), 2.0, true)
-	ink(tr("SCORE").to_upper(), Rect2(96, 221, 494, 44), 27, SCORE_LABEL, HORIZONTAL_ALIGNMENT_LEFT)
-	ink(group_int(roundi(score_face)), Rect2(89, 266, 490, 108), 91, PAPER, HORIZONTAL_ALIGNMENT_LEFT)
-	art.icon(self, &"trophy", Vector2(676, 298), 58.0)
-	ink(tr("BEST").to_upper(), Rect2(724, 228, 266, 42), 25, Color("#f7dfae"), HORIZONTAL_ALIGNMENT_LEFT)
-	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(720, 267, 268, 97), 63, PAPER, HORIZONTAL_ALIGNMENT_LEFT)
-
-	board.render(self, art, run, GRID, style, animation, input, metal, over_age, reduced, workshop, heading)
+	draw_texture_rect(PremiumArt.EMBLEM, Rect2(65, 62, 86, 86), false)
+	brand(Rect2(168, 65, 650, 75), true)
+	register_button("pause", Rect2(902, 62, 118, 118))
+	draw_texture_rect(PremiumArt.PAUSE, button_face("pause", Rect2(902, 62, 118, 118)), false)
+	var mode := tr("DAILY") if run.mode == GameManager.DAILY else rank
+	ink(mode, Rect2(70, 155, 940, 42), 34, MUTED)
+	ink(tr("SCORE").to_upper(), Rect2(330, 202, 420, 48), 34, MUTED)
+	ink(group_int(roundi(score_face)), Rect2(220, 248, 640, 143), 140, INK)
+	var best := save.best(run.mode, run.day, run.used_continue)
+	art.icon(self, &"trophy", Vector2(101, 244), 49.0)
+	ink(tr("BEST").to_upper(), Rect2(132, 215, 205, 43), 30, MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	ink(group_int(best), Rect2(76, 265, 230, 66), 51, INK)
+	if run.streak > 1:
+		panel(Rect2(807, 227, 194, 107), Color("#e4d7ff"), 35)
+		ink(tr("COMBO"), Rect2(817, 234, 174, 38), 27, TEAL)
+		ink("×%d" % ComboManager.multiplier(run.streak, GameManager.BALANCE), Rect2(817, 271, 174, 52), 48, TEAL)
 	var status := rank
 	if active_order:
 		status = tr("ORDER_PROGRESS") % [run.order.cells.size() - run.order.remaining(run.board), run.order.cells.size()]
-	panel(Rect2(66, 413, 444, 48), ORDER_PAPER if active_order else Color("#e8eee5"), 20)
-	ink(status, Rect2(84, 410 if active_order else 413, 407, 47), 25, WARM if active_order else TEAL, HORIZONTAL_ALIGNMENT_LEFT)
+	ink(status, Rect2(70, 404, 455, 55), 34, INK, HORIZONTAL_ALIGNMENT_LEFT)
 	if active_order:
 		var progress := 1.0 - float(run.order.remaining(run.board)) / run.order.cells.size()
-		progress_bar(Rect2(85, 451, 403, 4), progress, Color("#e0c9a1"), TEAL)
+		progress_bar(Rect2(72, 454, 430, 7), progress, Color("#d9ccef"), TEAL)
 	var soonest := run.board.soonest()
 	var refill_label := tr("REFILL_DELAY") % GameManager.BALANCE.refill_delay(run.score)
 	if soonest == 1:
 		refill_label = tr("REFILL_NEXT")
 	elif soonest > 1:
 		refill_label = tr("REFILL_IN") % soonest
-	panel(Rect2(529, 413, 485, 48), Color("#f6eee0"), 20)
-	art.icon(self, &"clock", Vector2(558, 437), 38.0)
-	ink(refill_label, Rect2(584, 414, 420, 46), 25, WARM, HORIZONTAL_ALIGNMENT_LEFT)
-	if run.streak > 1:
-		ink("%s ×%d" % [tr("COMBO"), ComboManager.multiplier(run.streak, GameManager.BALANCE)],
-			Rect2(372, 224, 214, 42), 25, SCORE_LABEL, HORIZONTAL_ALIGNMENT_RIGHT)
-	if banner_age < 1.65 and banner_seal < 0:
+	art.icon(self, &"clock", Vector2(562, 431), 42.0)
+	ink(refill_label, Rect2(594, 403, 416, 55), 34, INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	board.render(self, art, run, GRID, style, animation, input, metal, over_age, reduced, workshop, heading)
+	if banner_age < 1.65 and banner_seal < 0 and overlay == "":
 		var opacity := 1.0 - smoothstep(1.30, 1.65, banner_age)
-		var area := Rect2(236, 170 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
-		panel(area, Color(ORDER_PAPER, opacity), 20)
-		ink(banner, area.grow(-8), 26, Color(WARM, opacity))
-	var hint := run.first_move_hint() if show_first_move() else {}
+		var area := Rect2(264, 359, 552, 44)
+		panel(area, Color(TEAL, opacity), 22)
+		ink(banner, area.grow(-5), 30, Color(PAPER, opacity))
+	var hint := tutorial_hint if tutorial_active else (run.first_move_hint() if show_first_move() else {})
 	var pulse := 0.72 if reduced else 0.57 + sin(clock * 4.2) * 0.16
 	if not hint.is_empty():
 		board.outline(self, GRID, UNIT, hint.cells, hint.origin, Color(TEAL, pulse), true)
-	draw_texture_rect(ClayArt.DOCK, TRAY, false)
+	draw_texture_rect(PremiumArt.TRAY, TRAY, false)
 	for slot in slots.size():
 		draw_slot(slot, style, metal)
 	if not hint.is_empty():
 		panel(slots[hint.slot].grow(3), Color.TRANSPARENT, 24, Color(TEAL, pulse), 3)
 	draw_cut_caption(hint)
+	if tutorial_active and not hint.is_empty() and input.pointer == InputManager.IDLE and not animation.active and banner_age >= 1.65:
+		panel(Rect2(65, 1747, 950, 112), PAPER, 35)
+		ink(tr("COACH_LINE" if run.cut_count > 0 else "COACH_DRAG"), Rect2(82, 1751, 725, 100), 27, TEAL)
+		button("skip_tutorial", Rect2(822, 1761, 176, 80), tr("SKIP"), false, true)
 	draw_drag(style, metal)
 	particles.render(self, art)
+	if not reduced and pop_age < 1.0 and overlay == "":
+		draw_cut_pop()
 	if overlay != "":
 		draw_overlay()
+
+func draw_cut_pop() -> void:
+	var fade := 1.0 - smoothstep(0.55, 1.0, pop_age)
+	var bounce := 1.0 + 0.17 * sin(minf(pop_age * 9.0, PI))
+	var center := pop_center + Vector2(0, -50 - pop_age * 115)
+	center.x = clampf(center.x, 245.0, 835.0)
+	center.y = clampf(center.y, 525.0, 1360.0)
+	var tint := Color(Color("#ffffff"), fade)
+	var rim := Color(Color("#49328c"), fade)
+	embossed("+%s" % group_int(pop_points), Rect2(center - Vector2(210, 53), Vector2(420, 100)), roundi(75 * bounce), tint, rim)
+	if pop_combo > 1:
+		embossed("%s ×%d" % [tr("COMBO").to_upper(), pop_combo], Rect2(center - Vector2(235, 121), Vector2(470, 75)), roundi(54 * bounce), Color(Color("#ffd694"), fade), rim)
+	for i in 5:
+		var angle := float(i) * TAU / 5.0 + 0.2
+		var pos := pop_center + Vector2.from_angle(angle) * (45.0 + pop_age * 130.0)
+		PremiumArt.sparkle(self, pos, 54.0 * fade, fade)
+	if pop_combo > 1:
+		var radius := 32.0 + 220.0 * pop_age
+		draw_arc(pop_center, radius, 0.0, TAU, 48, Color(Color("#c5aaff"), fade * 0.65), 5.0, true)
 
 func show_first_move() -> bool:
 	return (run.cut_count == 0 and not run.ended and save.stat("cells") == 0
@@ -720,7 +798,16 @@ func cut(slot: int, anchor: Vector2i) -> void:
 	if change.is_empty():
 		return
 	var changed_best := save.update_move(run, change.removed.size(), change.lines)
+	if tutorial_active:
+		if run.line_count > tutorial_start_lines or run.cut_count - tutorial_start_cells >= 20 or run.ended:
+			tutorial_active = false
+			save.set_setting("tutorial_complete", true)
+		tutorial_hint = run.coaching_hint() if tutorial_active else {}
 	var center := GRID.position + (Vector2(anchor) + Vector2(change.form.size) / 2.0) * UNIT
+	pop_age = 0.0
+	pop_points = change.points
+	pop_center = center
+	pop_combo = ComboManager.multiplier(run.streak, GameManager.BALANCE)
 	start_animation(change, id, center, palette, style)
 	audio.effect("stretch")
 	audio.buzz(22)
@@ -758,6 +845,22 @@ func escape() -> void:
 
 func activate(id: String) -> void:
 	match id:
+		"tutorial":
+			start(GameManager.ENDLESS, true)
+			tutorial_active = not run.ended
+			tutorial_hint = run.coaching_hint()
+			tutorial_start_lines = run.line_count
+			tutorial_start_cells = run.cut_count
+		"skip_tutorial":
+			tutorial_active = false
+			tutorial_hint.clear()
+			save.set_setting("tutorial_complete", true)
+		"profile", "missions", "shop", "online":
+			open(id)
+		"online_refresh":
+			online_board.refresh()
+		"online_submit":
+			online_board.submit(save)
 		"play":
 			start(GameManager.ENDLESS, true)
 		"daily":
@@ -783,5 +886,11 @@ func activate(id: String) -> void:
 		"home", "collection", "records", "settings":
 			open("menu" if id == "home" else id)
 		_:
-			pages.activate(self, id)
+			if id.begins_with("claim_"):
+				refresh_day()
+				Progression.claim(save, int(id.get_slice("_", 1)), day)
+			elif id.begins_with("buy_"):
+				Progression.buy(save, int(id.get_slice("_", 1)))
+			else:
+				pages.activate(self, id)
 	queue_redraw()
