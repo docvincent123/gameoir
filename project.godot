@@ -3,10 +3,10 @@ config_version=5
 
 [application]
 config/name="Clay Factory — Endless Cut"
-config/version="2.0.0-preview"
+config/version="2.0.1-preview"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
-config/icon="res://assets/ui/icon.png"
+config/icon="res://assets/ui/premium/emblem.svg"
 boot_splash/show_image=false
 boot_splash/bg_color=Color(1, 0.965, 0.914, 1)
 
@@ -30,7 +30,7 @@ locale/translations=PackedStringArray("res://scripts/localization/strings.en.tra
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
-textures/canvas_textures/default_texture_filter=2
+textures/canvas_textures/default_texture_filter=1
 environment/defaults/default_clear_color=Color(0.13, 0.071, 0.22, 1)
 
 [clay]

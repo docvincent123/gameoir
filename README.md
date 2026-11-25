@@ -57,3 +57,6 @@ godot --headless --path . --script tests/run.gd
 
 ## 2.0 preview
 New profile, coin-funded cosmetics, daily/weekly missions, contextual coaching, pressure shader, mobile safe-area layout and optional community ranking. Existing local records and unlock thresholds are retained. Daily seed remains deterministic for this version, but the revised shape weights change hands relative to older versions. Leaderboard is opt-in, client-reported and not hosted by default; see server/README.md. Import the CSV translations in Godot before running. Physical device and CI validation remain necessary.
+
+## 2.0.1 premium visual preview
+New vector brand emblem, factory illustration, layered jade/gold HUD, cream/gold frame and tray, nine-slice buttons, MSDF font, crisp cell highlights, white order guides and floating point/combo effects. Board layout and hit regions remain unchanged. The reference is visual inspiration; the UI is drawn live, not a flattened screenshot. Device rendering remains unverified.
