@@ -45,12 +45,12 @@ def prepare_frame(source):
     reshaped.save(DESTINATION / "board.png", optimize=True)
 
 
-def sprite_grid(source):
+def sprite_grid(source, minimum_fraction=1.0):
     montage = Image.open(source).convert("RGBA")
     for index in range(9):
         row, column = divmod(index, 3)
         yield isolated(montage.crop((column * montage.width // 3, row * montage.height // 3,
-                                     (column + 1) * montage.width // 3, (row + 1) * montage.height // 3)))
+                                     (column + 1) * montage.width // 3, (row + 1) * montage.height // 3)), minimum_fraction)
 
 
 def prepare_icons(source):
@@ -61,6 +61,16 @@ def prepare_icons(source):
         atlas.paste(sprite, (column * 160 + (160 - sprite.width) // 2,
                              row * 160 + (160 - sprite.height) // 2))
     atlas.save(DESTINATION / "icons.png", optimize=True)
+
+
+def prepare_effects(source):
+    atlas = Image.new("RGBA", (160 * 3, 160 * 3))
+    for index, sprite in enumerate(sprite_grid(source, .075)):
+        sprite.thumbnail((146, 146), Image.Resampling.LANCZOS)
+        row, column = divmod(index, 3)
+        atlas.paste(sprite, (column * 160 + (160 - sprite.width) // 2,
+                             row * 160 + (160 - sprite.height) // 2))
+    atlas.save(DESTINATION / "effects.png", optimize=True)
 
 
 def fit(sprite, size=122):
@@ -174,12 +184,15 @@ if __name__ == "__main__":
     parser.add_argument("--icons", type=Path)
     parser.add_argument("--cubes", type=Path)
     parser.add_argument("--hero", type=Path)
+    parser.add_argument("--effects", type=Path)
     options = parser.parse_args()
     DESTINATION.mkdir(parents=True, exist_ok=True)
     if options.frame:
         prepare_frame(options.frame)
     if options.icons:
         prepare_icons(options.icons)
+    if options.effects:
+        prepare_effects(options.effects)
     if options.cubes:
         prepare_cubes(options.cubes)
     if options.hero:

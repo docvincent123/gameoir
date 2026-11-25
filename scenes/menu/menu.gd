@@ -1,7 +1,8 @@
 extends Node2D
 
 const HERO := preload("res://assets/ui/hero.png")
-const HERO_STAGE := Rect2(58, 435, 964, 657)
+const PLAY_AREA := Rect2(177, 1118, 726, 136)
+const DAILY_AREA := Rect2(224, 1286, 632, 104)
 const NAVIGATION := [
 	["collection", "COLLECTION", &"collection"],
 	["records", "RECORDS", &"trophy"],
@@ -9,42 +10,42 @@ const NAVIGATION := [
 ]
 
 func render(app) -> void:
-	var time: float = app.clock
-	var best: int = app.save.best()
 	var current: bool = app.save.has_active_run(GameManager.ENDLESS, app.day)
-	var daily: bool = app.save.has_active_run(GameManager.DAILY, app.day)
-	var floating := sin(time * 1.7) * 9.0 if not app.reduced else 0.0
-
-	app.art.icon(app, &"collection", Vector2(110, 126), 106.0)
-	var best_area := Rect2(683, 86, 335, 88)
-	app.card(best_area, app.SUN)
-	app.art.icon(app, &"trophy", Vector2(736, 130), 61.0)
-	app.ink("%s  %s" % [tr("BEST").to_upper(), app.group_int(best)],
-		Rect2(777, 92, 224, 76), 34, app.WARM, HORIZONTAL_ALIGNMENT_LEFT)
+	var floating: float = sin(app.clock * 1.45) * 6.0 if not app.reduced else 0.0
+	var scale := minf(650.0 / HERO.get_width(), 510.0 / HERO.get_height())
+	var size := HERO.get_size() * scale
+	app.draw_texture_rect(HERO, Rect2(Vector2((1080.0 - size.x) / 2.0, 498.0 - size.y / 2.0 + floating), size), false)
 
 	var title := "%s %s" % [tr("TITLE_TOP"), tr("TITLE_BOTTOM")]
-	app.ink(title, Rect2(64, 207, 952, 131), 125, app.INK, HORIZONTAL_ALIGNMENT_LEFT)
-	app.ink(tr("ENDLESS"), Rect2(68, 336, 950, 58), 43, app.TEAL, HORIZONTAL_ALIGNMENT_LEFT)
+	app.ink(title, Rect2(100, 789, 880, 128), 95)
+	app.ink(tr("ENDLESS"), Rect2(126, 917, 828, 61), 35, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
 
-	app.card(HERO_STAGE, app.LILAC)
-	var hero_side := 715.0
-	var hero_h := hero_side * float(HERO.get_height()) / float(HERO.get_width())
-	app.draw_texture_rect(HERO, Rect2((1080.0 - hero_side) / 2, 406 + floating, hero_side, hero_h), false)
-	app.art.icon(app, &"shine", Vector2(131, 630 - floating), 76.0)
-	app.art.icon(app, &"shine", Vector2(949, 884 + floating), 92.0)
+	app.register_button("play", PLAY_AREA)
+	var play: Rect2 = app.button_face("play", PLAY_AREA)
+	var green := Color("#295a49").lightened(0.12) if app.hovered == "play" else Color("#295a49")
+	app.panel(Rect2(PLAY_AREA.position + Vector2(0, 8), PLAY_AREA.size), Color("#1e473a"), 42)
+	app.panel(play, green, 42)
+	app.ink(tr("RESUME") if current else tr("PLAY"), play.grow(-18), 48, app.PAPER)
 
-	app.button("play", Rect2(55, 1150, 970, 138), tr("RESUME") if current else tr("PLAY"), true, false, false, app.MINT)
-	app.button("daily", Rect2(55, 1320, 970, 118), tr("DAILY"), false, false, false, app.PEACH)
-	if daily:
-		app.art.icon(app, &"clock", Vector2(957, 1378), 53.0)
+	app.register_button("daily", DAILY_AREA)
+	var daily: Rect2 = app.button_face("daily", DAILY_AREA)
+	app.panel(daily, Color("#f2eddf") if app.hovered == "daily" else Color("#fffbee"), 33, Color("#c9d4c9"), 2)
+	app.ink(tr("DAILY"), daily.grow(-19), 34)
+	if app.save.has_active_run(GameManager.DAILY, app.day):
+		app.art.icon(app, &"clock", daily.position + Vector2(46, 51), 36)
 
-	var paints: Array = [app.ROSE, app.SUN, app.SKY]
+	app.draw_line(Vector2(82, 1513), Vector2(998, 1513), app.EDGE, 2.0, true)
 	for index in NAVIGATION.size():
 		var entry: Array = NAVIGATION[index]
-		var area := Rect2(55 + index * 330, 1483, 310, 248)
-		app.button(entry[0], area, "", false, false, false, paints[index], false)
+		var area := Rect2(72 + index * 316, 1542, 304, 146)
+		app.register_button(entry[0], area)
 		var face: Rect2 = app.button_face(entry[0], area)
-		app.art.icon(app, entry[2], face.position + Vector2(155, 92), 139.0)
-		app.ink(tr(entry[1]), Rect2(face.position + Vector2(16, 166), Vector2(278, 57)), 35)
-	app.draw_line(Vector2(70, 1784), Vector2(1010, 1784), app.EDGE, 2.0, true)
-	app.ink(tr("CREDIT"), Rect2(60, 1821, 960, 45), 25, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+		if app.hovered == entry[0]:
+			app.panel(face, Color("#f1eadc"), 32)
+		app.art.icon(app, entry[2], face.position + Vector2(152, 47), 68)
+		app.ink(tr(entry[1]), Rect2(face.position + Vector2(12, 86), Vector2(280, 50)), 30)
+
+	var best: int = app.save.best()
+	if best > 0:
+		app.ink("%s  %s" % [tr("BEST"), app.group_int(best)], Rect2(100, 1752, 880, 42), 29, app.TEAL)
+	app.ink(tr("CREDIT"), Rect2(72, 1824, 936, 42), 25, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)

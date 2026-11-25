@@ -26,11 +26,13 @@ const SHADOW := Color(0.26, 0.34, 0.22, 0.15)
 const GRID := Rect2(88, 507, 904, 904)
 const TRAY := Rect2(62, 1500, 956, 234)
 const UNIT := GRID.size.x / BoardManager.SIZE
+const RETURN_DURATION := 0.30
+const SLOT_PREVIEW := Vector2(224, 129)
 const BUTTON_ICONS := {
 	"play": &"play", "daily": &"calendar", "collection": &"collection",
 	"records": &"trophy", "settings": &"settings", "pause": &"pause", "back": &"back",
-	"resume_game": &"play", "again": &"restart", "home": &"home", "continue": &"restart",
-	"pause_settings": &"settings", "wait_turn": &"clock",
+	"resume_game": &"play", "again": &"restart", "home": &"home",
+	"pause_settings": &"settings",
 	"tab_0": &"collection", "tab_1": &"cutter", "tab_2": &"home", "tab_3": &"shine",
 }
 
@@ -70,7 +72,7 @@ var over_age := 0.0
 var banner := ""
 var banner_age := 2.1
 var best_celebrated := false
-var return_age := 2.0
+var return_age := 0.0
 var return_from := Vector2.ZERO
 var return_slot := -1
 var collection_tab := 0
@@ -131,6 +133,7 @@ func open(screen: String) -> void:
 	view = screen
 	accent.clear()
 	overlay = ""
+	pages.reset_effect_preview()
 	fade_age = 0.0
 	buttons.clear()
 	disabled.clear()
@@ -138,6 +141,7 @@ func open(screen: String) -> void:
 	reset_press()
 	hovered = ""
 	input.cancel()
+	return_slot = -1
 	if screen == "menu":
 		refresh_day()
 	if screen == "records":
@@ -168,7 +172,6 @@ func start(mode: String, resume: bool) -> void:
 		overlay = "over"
 	banner_age = 2.1
 	best_celebrated = run.score >= 100 and run.score == save.best(run.mode, run.day, run.used_continue)
-	return_slot = -1
 
 func _process(delta: float) -> void:
 	accent.visible = view == "game" and overlay == "" and not reduced
@@ -177,12 +180,16 @@ func _process(delta: float) -> void:
 		clock -= 600.0
 	var needs_redraw := fade_age < 0.3 or (view == "menu" and not reduced)
 	fade_age = minf(0.3, fade_age + delta)
+	if view == "game" and return_slot >= 0:
+		return_age += delta
+		if return_age >= RETURN_DURATION:
+			return_slot = -1
+		needs_redraw = true
 	if view == "game" and overlay != "pause":
 		var particles_moving := particles.tick(delta)
 		needs_redraw = (needs_redraw or particles_moving or animation.active or banner_age < 1.65
-			or return_slot >= 0 or (run.ended and over_age < 1.0))
+			or (run.ended and over_age < 1.0))
 		banner_age += delta
-		return_age += delta
 		if animation.active:
 			advance_cut(delta)
 		if run.ended:
@@ -234,14 +241,15 @@ func animate_refill() -> void:
 		announce(tr("LINE_REFILL") if count == 1 else tr("MULTI_REFILL") % count)
 
 func burst_cut() -> void:
-	var fx := ThemeCatalog.unlocked_choice(save, "effect", ThemeCatalog.EFFECTS, save.stat("lines"))
-	var tint: Color = ThemeCatalog.EFFECTS[fx][2]
+	var fx := animation.cut_effect
+	var color: Color = ThemeCatalog.EFFECTS[fx][2]
 	for cell: Vector2i in animation.change.removed:
 		var center := GRID.position + (Vector2(cell) + Vector2(0.5, 0.35)) * UNIT
 		var material := ThemeCatalog.material_at(animation.palette, cell)
-		particles.burst(center, 2 if reduced else 5, material, tint, false, 0.72)
-		if fx > 0:
-			particles.burst(center, 1 if reduced else 3, animation.palette[0], tint, true, 0.74)
+		particles.burst(center, 2 if reduced else 5, material, Color.WHITE, false, 0.72)
+		if not reduced:
+			var sprite: ClayArt.Effect = [ClayArt.Effect.CHIP, ClayArt.Effect.GLINT, ClayArt.Effect.DROP][fx]
+			particles.burst(center, 1 if fx == 0 else 3, material, Color.WHITE.lerp(color, 0.22), fx > 0, 0.81, sprite)
 
 func announce(caption: String) -> void:
 	banner = caption
@@ -267,14 +275,17 @@ func button_face(id: String, area: Rect2) -> Rect2:
 	var travel := 8.0 * press_depth if pressed_button == id else 0.0
 	return Rect2(area.position + Vector2(0, travel), area.size)
 
-func button(id: String, area: Rect2, caption: String, primary := false, small := false,
-		locked := false, paint := Color.TRANSPARENT, show_icon := true) -> void:
+func register_button(id: String, area: Rect2, locked := false) -> void:
 	buttons[id] = area
 	disabled[id] = locked
+
+func button(id: String, area: Rect2, caption: String, primary := false, small := false,
+		locked := false, paint := Color.TRANSPARENT, show_icon := true) -> void:
+	register_button(id, area, locked)
 	var pressed := button_face(id, area)
 	var tint := paint
 	if tint.a == 0.0:
-		tint = SUN if id == "wait_turn" else MINT if primary else PAPER
+		tint = MINT if primary else PAPER
 	if locked:
 		tint = tint.lerp(Color("#f0e5db"), 0.42)
 	elif hovered == id:
@@ -334,10 +345,10 @@ func draw_game() -> void:
 	if run.used_continue:
 		mode = tr("ASSISTED")
 	ink(mode, Rect2(147, 137, 689, 43), 26, MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	button("pause", Rect2(917, 73, 98, 95), "", false, false, false, LILAC)
-	art.icon(self, &"collection", Vector2(91, 119), 83.0)
-	card(Rect2(60, 216, 558, 184), MINT)
-	card(Rect2(637, 216, 382, 184), SUN)
+	button("pause", Rect2(917, 73, 98, 95), "", false, false, false, PAPER)
+	art.icon(self, &"cutter", Vector2(91, 119), 76.0, TEAL)
+	card(Rect2(60, 216, 558, 184), Color("#e6efe4"))
+	card(Rect2(637, 216, 382, 184), Color("#f7ead4"))
 	ink(tr("SCORE").to_upper(), Rect2(96, 235, 498, 45), 27, TEAL, HORIZONTAL_ALIGNMENT_LEFT)
 	ink(group_int(roundi(score_face)), Rect2(91, 280, 491, 100), 83, INK, HORIZONTAL_ALIGNMENT_LEFT)
 	art.icon(self, &"trophy", Vector2(700, 308), 71.0)
@@ -364,16 +375,13 @@ func draw_game() -> void:
 		var area := Rect2(236, 180 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
 		panel(area, Color("#f4d7e7", opacity), 20, Color("#dcabc4", opacity * 0.6), 2)
 		ink(banner, area.grow(-8), 28, Color("#81375f", opacity))
-	art.skin(self, TRAY, &"recess", Color("#f3d8b5"))
+	art.skin(self, TRAY, &"recess", Color("#e4d6be"))
 	for slot in slots.size():
 		draw_slot(slot, palette[slot % palette.size()], metal)
-	if run.waiting and not animation.active:
-		button("wait_turn", Rect2(152, 1752, 776, 106), tr("WAIT_TURN"), true)
-	else:
-		ink(tr("DRAG_HINT") if run.cut_count < 4 else tr("CUTTERS"), Rect2(80, 1760, 920, 53), 32, INK)
-		if run.cut_count < 4:
-			ink(tr("REFILL_HINT"), Rect2(76, 1813, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
-	draw_drag(metal)
+	if run.cut_count < 4 and not run.ended:
+		ink(tr("DRAG_HINT"), Rect2(80, 1760, 920, 53), 32, INK)
+		ink(tr("REFILL_HINT"), Rect2(76, 1813, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+	draw_drag(palette, metal)
 	particles.render(self, art)
 	if overlay != "":
 		draw_overlay()
@@ -382,16 +390,14 @@ func draw_slot(slot: int, material: int, metal: Color) -> void:
 	var area := slots[slot]
 	var id: String = run.cutters.hand[slot]
 	var empty := id == "" or slot == input.slot or slot == return_slot
-	var paints := [PEACH, MINT, LILAC]
-	var slot_tint: Color = Color("#dec7aa") if empty else paints[slot]
-	art.skin(self, area, &"recess", slot_tint)
+	art.skin(self, area, &"recess", Color("#eee3cf"))
 	if empty:
 		draw_line(area.get_center() - Vector2(18, 0), area.get_center() + Vector2(18, 0),
-			Color("#917a61"), 4.0, true)
+			Color("#a48f75"), 4.0, true)
 		return
 	var form := run.cutters.shape(slot)
-	var unit := preview_unit(form, 224, 129)
-	var tone := Color(Color.WHITE, 0.65) if run.ended or run.waiting else Color.WHITE
+	var unit := preview_unit(form, SLOT_PREVIEW.x, SLOT_PREVIEW.y)
+	var tone := Color(Color.WHITE, 0.65) if run.ended else Color.WHITE
 	var center := area.get_center()
 	if animation.active and animation.change.get("dealt", false) and not reduced:
 		var spring := clampf((animation.elapsed - slot * 0.065) / 0.36, 0, 1)
@@ -410,24 +416,27 @@ func draw_form(form: Dictionary, id: String, at: Vector2, unit: float, material:
 		art.cell(self, Rect2(start + Vector2(cell) * unit, Vector2.ONE * unit), material, (cell.x * 3 + cell.y * 5) % ClayArt.VARIANTS, tint)
 	art.cutter(self, id, at, unit, metal)
 
-func draw_drag(metal: Color) -> void:
+func draw_drag(palette: Array, metal: Color) -> void:
 	if input.slot >= 0:
 		var id := run.cutters.hand[input.slot]
 		var form := run.cutters.shape(input.slot)
 		var drag_center := input.position - Vector2(0, UNIT * (1.02 if input.touchscreen else 0.29))
 		if input.touched_board:
 			drag_center = GRID.position + (Vector2(input.anchor) + Vector2(form.size) / 2.0) * UNIT
-		var tint := BoardView.VALID if input.valid else BoardView.INVALID
-		art.cutter(self, id, drag_center, UNIT, metal.lerp(tint, 0.41) if input.touched_board else metal)
-	elif return_slot >= 0 and return_age < 0.29:
+			var tint := BoardView.VALID if input.valid else BoardView.INVALID
+			art.cutter(self, id, drag_center, UNIT, metal.lerp(tint, 0.46))
+		else:
+			draw_form(form, id, drag_center, UNIT, palette[input.slot % palette.size()], metal, Color.WHITE)
+	elif return_slot >= 0:
 		var id := run.cutters.hand[return_slot]
 		var form := run.cutters.shape(return_slot)
-		var amount := ease(clampf(return_age / 0.29, 0.0, 1.0), 0.29)
+		var progress := clampf(return_age / RETURN_DURATION, 0.0, 1.0)
+		var easing := 1.0 - pow(1.0 - progress, 3.0)
 		var target := slots[return_slot].get_center()
-		var unit := lerpf(UNIT, preview_unit(form, 224, 129), amount)
-		art.cutter(self, id, return_from.lerp(target, amount), unit, metal)
-	elif return_slot >= 0:
-		return_slot = -1
+		var center := return_from.lerp(target, easing)
+		center.y -= 22.0 * sin(progress * PI)
+		var unit := lerpf(UNIT, preview_unit(form, SLOT_PREVIEW.x, SLOT_PREVIEW.y), easing)
+		draw_form(form, id, center, unit, palette[return_slot % palette.size()], metal, Color.WHITE)
 
 func draw_overlay() -> void:
 	buttons.clear()
@@ -440,8 +449,7 @@ func draw_overlay() -> void:
 		button("home", Rect2(189, 1000, 702, 105), tr("HOME"))
 		button("pause_settings", Rect2(189, 1142, 702, 96), tr("SETTINGS"))
 		return
-	var can_continue := run.can_continue()
-	var modal := Rect2(94, 501 if can_continue else 597, 892, 924 if can_continue else 727)
+	var modal := Rect2(94, 597, 892, 727)
 	card(modal, PAPER)
 	var top := modal.position.y
 	art.icon(self, &"trophy", Vector2(540, top + 73), 110.0)
@@ -455,9 +463,6 @@ func draw_overlay() -> void:
 	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(555, top + 313, 340, 78), 58, WARM)
 	button("again", Rect2(168, top + 460, 744, 111), tr("PLAY_AGAIN"), true)
 	button("home", Rect2(168, top + 605, 744, 90), tr("HOME"))
-	if can_continue:
-		button("continue", Rect2(168, top + 728, 744, 97), tr("CONTINUE"))
-		ink(tr("ASSISTED_NOTE"), Rect2(166, top + 838, 748, 57), 25, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventScreenTouch:
@@ -506,7 +511,7 @@ func pointer_down(id: int, at: Vector2) -> void:
 		pointer_buttons[id] = target
 		animate_press(target, true)
 		return
-	if not pointer_buttons.is_empty() or view != "game" or overlay != "" or run.waiting:
+	if not pointer_buttons.is_empty() or view != "game" or overlay != "":
 		return
 	for slot in slots.size():
 		if slots[slot].has_point(at) and not run.cutters.shape(slot).is_empty():
@@ -552,8 +557,9 @@ func pointer_up(id: int, at: Vector2) -> void:
 	if valid:
 		cut(slot, anchor)
 	else:
-		return_slot = slot
-		return_age = 0.0
+		if not reduced:
+			return_slot = slot
+			return_age = 0.0
 		audio.effect("stretch", -8.0)
 	queue_redraw()
 
@@ -613,19 +619,11 @@ func cut(slot: int, anchor: Vector2i) -> void:
 		particles.burst(center, 18 if reduced else 45, palette[0], GILT, true, 1.18)
 
 func start_animation(change: Dictionary, stamp: String, center: Vector2, palette: Array) -> void:
-	animation.start(change, stamp, center, UNIT, palette)
+	var effect := ThemeCatalog.unlocked_choice(save, "effect", ThemeCatalog.EFFECTS, save.stat("lines"))
+	animation.start(change, stamp, center, palette, effect)
 	if not change.refilled.is_empty():
 		var middle := BoardManager.line_cell(change.refilled[0], floori(BoardManager.SIZE / 2.0))
 		animation.refill_center = GRID.position + (Vector2(middle) + Vector2.ONE * 0.5) * UNIT
-
-func wait_for_refill() -> void:
-	if animation.active:
-		return
-	var change := run.wait_turn()
-	if change.is_empty():
-		return
-	save.update_move(run, 0, 0)
-	start_animation(change, "", GRID.get_center(), ThemeCatalog.active_palette(run, save))
 
 func escape() -> void:
 	if view == "game" and overlay == "":
@@ -651,8 +649,6 @@ func activate(id: String) -> void:
 				overlay = "pause"
 		"resume_game":
 			overlay = ""
-		"wait_turn":
-			wait_for_refill()
 		"pause_settings":
 			open("pause_settings")
 		"back":
@@ -663,14 +659,6 @@ func activate(id: String) -> void:
 				open("menu")
 		"home", "collection", "records", "settings":
 			open("menu" if id == "home" else id)
-		"continue":
-			if run.continue_run():
-				best_celebrated = false
-				overlay = ""
-				over_age = 0.0
-				save.store_run(run)
-				announce(tr("ASSISTED"))
-				audio.effect("refill")
 		_:
 			pages.activate(self, id)
 	queue_redraw()

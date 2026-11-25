@@ -111,10 +111,6 @@ func test_moves() -> void:
 			a.board.cells[a.board.index(Vector2i(x, y))] = int((x + y) % 2 == 0)
 	check(not a.play(0, Vector2i(1, 1)).is_empty() and a.ended, "No move detection with remaining cutters")
 	check(a.play(1, Vector2i.ZERO).is_empty(), "Ended run rejects further moves")
-	check(not a.continue_run(), "Daily mode excludes assisted scores")
-	a.mode = GameManager.ENDLESS
-	check(a.continue_run() and not a.ended and a.board.cells.count(1) == BoardManager.COUNT, "Single assisted continue")
-	check(LeaderboardProvider.category(a) == "assisted" and not a.can_continue(), "Assisted separation")
 	for y in BoardManager.SIZE:
 		for x in BoardManager.SIZE:
 			a.board.cells[a.board.index(Vector2i(x, y))] = int((x + y) % 2 == 0)
@@ -136,7 +132,6 @@ func test_delayed_refills() -> void:
 	var clear := run.play(0, Vector2i.ZERO)
 	check(clear.refilled.is_empty() and run.board.soonest() == 2 and run.score == 1500, "Delay uses the score awarded by the clearing move")
 	check(run.play(1, Vector2i.ZERO).is_empty() and run.board.soonest() == 2, "Invalid move preserves the countdown")
-	check(run.wait_turn().is_empty(), "Pass unavailable while a cutter fits")
 	check(run.play(1, Vector2i(0, 1)).refilled.is_empty() and run.board.soonest() == 1, "Later cut spends one turn")
 	check(run.play(2, Vector2i(0, 2)).refilled == [0] and run.board.filled(Vector2i.ZERO), "The due line refills during the second later cut")
 	check(run.score == 1520 and run.line_count == 1, "Refill does not double-credit its line")
@@ -164,20 +159,19 @@ func test_delayed_refills() -> void:
 	blocked.start(GameManager.ENDLESS, "", 125)
 	set_blocked_fixture(blocked)
 	blocked.play(0, Vector2i.ZERO)
-	check(blocked.waiting and not blocked.ended and blocked.board.soonest() == 3, "A blocked board can wait for a scheduled refill")
-	var before := blocked.score
-	for remaining in [2, 1, 0]:
-		blocked.wait_turn()
-		check(blocked.board.soonest() == remaining, "A pass spends one turn without skipping ahead")
-	check(not blocked.waiting and not blocked.ended and blocked.score == before, "Refill opens a move without awarding pass points")
-	blocked.board.reset()
-	blocked.board.cells.fill(0)
-	blocked.board.pending[0] = 1
-	blocked.cutters.hand.assign(["square_0", "tray_0", "block_0"])
-	blocked.refresh_availability()
-	check(blocked.waiting, "Last queued line can be awaited")
-	blocked.wait_turn()
-	check(blocked.ended and not blocked.waiting, "A refill that cannot open a move ends the game")
+	check(blocked.ended and blocked.board.soonest() == 3, "A blocked board loses even with a queued refill")
+	check(blocked.play(1, Vector2i.ZERO).is_empty() and blocked.board.soonest() == 3, "A completed game cannot spend another turn")
+	var saved := blocked.snapshot()
+	saved.ended = false
+	var reopened := GameManager.new()
+	check(reopened.restore(saved) and reopened.ended and reopened.board.soonest() == 3,
+		"An older run saved while blocked opens to the result")
+
+	var due := GameManager.new()
+	due.start(GameManager.ENDLESS, "", 126)
+	set_blocked_fixture(due)
+	due.board.pending[1] = 1
+	check(due.play(0, Vector2i.ZERO).refilled == [1] and not due.ended, "A line due this turn can provide another move")
 
 func set_blocked_fixture(run: GameManager) -> void:
 	run.cutters.hand.assign(["single_0", "domino_0", "corner_0"])
@@ -212,12 +206,14 @@ func test_save() -> void:
 	storage.record(run)
 	storage.record(run)
 	check(storage.stat("games") == 1 and storage.history().size() == 1, "Result is recorded only once")
-	check(run.continue_run(), "Assisted run starts after result")
-	run.score = 1000
-	storage.update_move(run, 0, 0)
+	var previous_assisted := run.snapshot()
+	previous_assisted.used_continue = true
+	previous_assisted.recorded = false
+	previous_assisted.score = 1000
+	var assisted := GameManager.new()
+	check(assisted.restore(previous_assisted), "Older assisted runs retain their category")
+	storage.update_move(assisted, 0, 0)
 	check(storage.best() == 10 and storage.best(GameManager.ENDLESS, "", true) == 1000, "Assisted record isolation")
-	run.ended = true
-	storage.record(run)
 	check(storage.stat("games") == 1 and storage.history()[0].assisted, "Assisted result is logged without counting a second game")
 	var daily := GameManager.new()
 	daily.start(GameManager.DAILY, "2026-11-25", 1)
@@ -298,7 +294,7 @@ func test_interface() -> void:
 		var center := app.view_origin + Factory.DESIGN * app.view_scale / 2
 		check(app.virtual(center).is_equal_approx(Factory.DESIGN / 2), "Viewport coordinate scaling %s" % size)
 
-	await click(app, Vector2(540, 1267))
+	await click_button(app, "play")
 	check(app.view == "game" and app.run != null, "Play button opens gameplay")
 	if app.run == null:
 		app.queue_free()
@@ -306,8 +302,22 @@ func test_interface() -> void:
 	app.run.cutters.hand.assign(["single_0", "single_0", "single_0"])
 	var left := app.slots[0].get_center()
 	var first := Factory.GRID.position + Vector2(0.5, 0.5) * Factory.UNIT
+	app.queue_redraw()
+	await create_timer(0.35).timeout
+	var pixel := left - Vector2(15, 20)
+	var visible_before := await slot_pixel(app, pixel)
 	await drag_mouse(app, left, first - Vector2(Factory.UNIT, -Factory.UNIT * 0.29))
 	check(app.run.score == 0 and app.return_slot == 0, "Off-board drop returns without scoring")
+	await create_timer(Factory.RETURN_DURATION + 0.15).timeout
+	check(app.return_slot == -1 and app.run.cutters.hand[0] == "single_0", "Failed drop returns the original cutter")
+	if DisplayServer.get_name() != "headless":
+		var visible_after := await slot_pixel(app, pixel)
+		check(visible_before.r > visible_before.g + 0.14 and visible_before.b > visible_before.g + 0.04,
+			"The rendered sample is the pink cutter rather than its empty slot")
+		check(visible_before.is_equal_approx(visible_after), "Returned cutter is drawn in its slot after the UI becomes idle")
+	await drag_touch(app, app.slots[2].get_center(), Vector2(1018, 1768))
+	await create_timer(Factory.RETURN_DURATION + 0.12).timeout
+	check(app.return_slot == -1 and app.run.cutters.hand[2] == "single_0", "Touch drop below the board also returns its cutter")
 	await drag_mouse(app, left, first + Vector2(0, Factory.UNIT * 0.29))
 	check(app.run.score == 10 and app.animation.active, "Mouse drag cuts then locks")
 	await drag_mouse(app, app.slots[1].get_center(), first + Vector2(Factory.UNIT, Factory.UNIT * 0.29))
@@ -322,7 +332,7 @@ func test_interface() -> void:
 	check(app.overlay == "pause", "Pause modal opens")
 	await click(app, Vector2(540, 1053))
 	check(app.view == "menu", "Home from pause")
-	await click(app, Vector2(540, 1267))
+	await click_button(app, "play")
 	check(app.run.score == 20 and app.run.cutters.hand.count("") == 2, "Resume button restores the saved cut")
 	app.run.cutters.hand.assign(["single_0", "domino_0", "corner_0"])
 	app.run.board.cells.fill(0)
@@ -333,18 +343,25 @@ func test_interface() -> void:
 	await drag_mouse(app, left, first + Vector2(0, Factory.UNIT * 0.29))
 	await create_timer(0.81).timeout
 	check(app.run.line_count == 0 and app.overlay == "over", "Results appear when all remaining cutters are blocked")
-	await click(app, Vector2(540, 1276))
-	check(app.run.used_continue and app.overlay == "" and app.run.board.cells.count(1) == BoardManager.COUNT, "One-time offline continue works through the modal")
+	await click_button(app, "again")
+	check(not app.run.ended and app.overlay == "" and app.run.board.cells.count(1) == BoardManager.COUNT
+		and app.run.score == 0, "Play again starts a fresh game from the result")
 	set_blocked_fixture(app.run)
 	await drag_mouse(app, left, first + Vector2(0, Factory.UNIT * 0.29))
-	await create_timer(0.57).timeout
-	check(app.run.waiting and app.buttons.has("wait_turn"), "Wait button appears only when pending refill unblocks play")
-	await click(app, Vector2(540, 1805))
-	check(app.run.board.soonest() == 2 and app.animation.active, "Wait button advances one turn in the gameplay scene")
+	await create_timer(0.66).timeout
+	check(app.run.ended and app.overlay == "over" and app.run.board.soonest() == 3,
+		"A queued refill still leaves the player at game over")
+	check(app.buttons.size() == 2 and app.buttons.has("again") and app.buttons.has("home"), "Only restart and home are available after losing")
 	app.open("collection")
 	await process_frame
 	await click(app, Vector2(403, 265))
 	check(app.collection_tab == 1, "Collection cutter tab")
+	await click_button(app, "tab_3")
+	await click_button(app, "option_1")
+	check(app.pages.preview_index == 1 and app.save.setting("effect", 0) == 0, "Locked effect can be previewed")
+	app.save.data.set_value("stats", "lines", 16)
+	await click_button(app, "option_1")
+	check(app.save.setting("effect", 0) == 1, "Unlocked effect can be applied")
 	app.open("records")
 	await process_frame
 	app.open("settings")
@@ -353,6 +370,18 @@ func test_interface() -> void:
 	check(app.save.setting("music", false), "Settings toggle via main input route")
 	app.queue_free()
 	await process_frame
+
+func slot_pixel(app: Factory, stage: Vector2) -> Color:
+	if DisplayServer.get_name() == "headless":
+		return Color.TRANSPARENT
+	await RenderingServer.frame_post_draw
+	var image := root.get_texture().get_image()
+	var point := screen(app, stage) / app.get_viewport_rect().size * Vector2(image.get_size())
+	return image.get_pixel(roundi(point.x), roundi(point.y))
+
+func click_button(app: Factory, id: String) -> void:
+	var area: Rect2 = app.buttons[id]
+	await click(app, area.get_center())
 
 func click(app: Factory, position: Vector2) -> void:
 	mouse_button(app, position, true)

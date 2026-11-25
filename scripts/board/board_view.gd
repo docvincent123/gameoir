@@ -4,8 +4,8 @@ extends Node2D
 const GILT := Color("#fff2b2")
 const VALID := Color("#006e62")
 const INVALID := Color("#ab245a")
-const WELL := Color("#b6d0c4")
-const QUEUED_WELL := Color("#f9cf9d")
+const WELL := Color("#e1d6c0")
+const QUEUED_WELL := Color("#f6cf9f")
 
 func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, palette: Array,
 		animation: AnimationManager, input: InputManager, metal: Color, over: float, reduced: bool, workshop: Color, numbers: Font) -> void:
@@ -14,7 +14,7 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, pa
 	board.position += animation.displace(run.streak, reduced)
 	var frame_tint := workshop.lerp(Color.WHITE, 0.83).darkened(over * 0.30)
 	art.panel(canvas, shift(board.grow(49), Vector2(0, 11)), Color(0.18, 0.37, 0.31, 0.19), 48)
-	art.panel(canvas, board.grow(13), Color("#c2dacc"), 29)
+	art.panel(canvas, board.grow(13), Color("#e7ddca"), 29)
 	canvas.draw_texture_rect(ClayArt.FRAME, board.grow(49), false, frame_tint)
 
 	var preview := run.cutters.shape(input.slot)
@@ -58,7 +58,7 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, pa
 				crack(canvas, cell, over)
 
 	if animation.active:
-		stamp(canvas, art, board, unit, animation, metal)
+		stamp(canvas, art, board, unit, animation, metal, reduced)
 		if not reduced:
 			refill_trails(canvas, art, board, unit, animation)
 	draw_queue(canvas, art, run.board, board, unit, numbers)
@@ -93,14 +93,21 @@ func refill_trails(canvas: CanvasItem, art: ClayArt, area: Rect2, unit: float, a
 		var movement := first.lerp(last, progress)
 		var trail := first.lerp(last, maxf(0, progress - 0.31))
 		canvas.draw_line(trail, movement, Color("#bd7837", glow * 0.70), 5.0, true)
-		art.icon(canvas, &"shine", movement, 40.0 + 23.0 * glow, Color(Color.WHITE, glow))
+		art.effect(canvas, ClayArt.Effect.GLINT, movement, 48.0 + 27.0 * glow, Color(Color.WHITE, glow))
 
-func stamp(canvas: CanvasItem, art: ClayArt, board: Rect2, unit: float, animation: AnimationManager, metal: Color) -> void:
+func stamp(canvas: CanvasItem, art: ClayArt, board: Rect2, unit: float,
+		animation: AnimationManager, metal: Color, reduced: bool) -> void:
 	var elapsed := animation.elapsed
-	var center := animation.stamp_center + Vector2(0, -24.0 * maxf(0.0, 1.0 - elapsed / 0.125))
-	if elapsed < 0.24:
-		var fade := 1.0 - smoothstep(0.12, 0.24, elapsed)
-		art.cutter(canvas, animation.stamp_id, center, animation.stamp_unit, Color(metal, fade))
+	var pressing := clampf(elapsed / AnimationManager.PRESS, 0.0, 1.0)
+	if elapsed < 0.26:
+		var center := animation.stamp_center + Vector2(0, -29.0 * (1.0 - pressing * pressing))
+		var fade := 1.0 - smoothstep(AnimationManager.PRESS, 0.26, elapsed)
+		art.cutter(canvas, animation.stamp_id, center, unit * lerpf(1.025, 1.0, pressing), Color(metal, fade))
+	if not reduced and elapsed >= AnimationManager.PRESS and elapsed < 0.44:
+		var bloom := inverse_lerp(AnimationManager.PRESS, 0.44, elapsed)
+		var alpha := sin(bloom * PI) * 0.66
+		art.effect(canvas, ClayArt.CUT_PULSES[animation.cut_effect], animation.stamp_center,
+			unit * lerpf(0.7, 2.3, bloom), Color(Color.WHITE, alpha))
 	if elapsed >= AnimationManager.PRESS and elapsed <= 0.425:
 		var pop := inverse_lerp(AnimationManager.PRESS, 0.425, elapsed)
 		var tension := sin(pop * PI)

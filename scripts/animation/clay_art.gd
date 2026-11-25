@@ -20,6 +20,12 @@ const SURFACES := {
 const ICON_ATLAS := preload("res://assets/ui/workshop/icons.png")
 const ICONS := [&"play", &"calendar", &"collection", &"trophy", &"settings", &"pause", &"back", &"clock", &"shine"]
 
+enum Effect { CHIP, GLINT, DROP, PUFF, RING, SWOOSH, CRUMBS, SPARKS, RIBBON }
+
+const EFFECT_ATLAS := preload("res://assets/ui/workshop/effects.png")
+const CUT_PULSES := [Effect.PUFF, Effect.RING, Effect.SWOOSH]
+const EFFECT_PREVIEWS := [Effect.CRUMBS, Effect.SPARKS, Effect.RIBBON]
+
 var regions: Dictionary
 var styles: Dictionary = {}
 var skin_styles: Dictionary = {}
@@ -70,6 +76,11 @@ func icon(canvas: CanvasItem, id: StringName, center: Vector2, side: float, tint
 		var region := Rect2((index % 7) * TILE, floori(index / 7.0) * TILE, TILE, TILE)
 		canvas.draw_texture_rect_region(GLYPH_ATLAS, area, region, tint, false, true)
 
+func effect(canvas: CanvasItem, sprite: int, center: Vector2, side: float, tint := Color.WHITE) -> void:
+	var area := Rect2(center - Vector2.ONE * side * 0.5, Vector2.ONE * side)
+	var region := Rect2(sprite % 3 * 160, floori(sprite / 3.0) * 160, 160, 160)
+	canvas.draw_texture_rect_region(EFFECT_ATLAS, area, region, tint, false, true)
+
 func panel(canvas: CanvasItem, area: Rect2, color: Color, radius: int, border := Color.TRANSPARENT, border_size := 2) -> void:
 	var key := [color, radius, border, border_size]
 	var style: StyleBoxFlat = styles.get(key)
@@ -85,10 +96,3 @@ func panel(canvas: CanvasItem, area: Rect2, color: Color, radius: int, border :=
 			styles.clear()
 		styles[key] = style
 	canvas.draw_style_box(style, area)
-
-func sparkle(canvas: CanvasItem, center: Vector2, radius: float, color: Color, tilt := 0.0) -> void:
-	var points := PackedVector2Array()
-	for i in 8:
-		var angle := float(i) * TAU / 8.0 + tilt
-		points.append(center + Vector2.from_angle(angle) * (radius if i % 2 == 0 else radius * 0.23))
-	canvas.draw_colored_polygon(points, color)

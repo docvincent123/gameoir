@@ -18,7 +18,6 @@ var line_count := 0
 var used_continue := false
 var ended := false
 var recorded := false
-var waiting := false
 
 func start(game_mode: String, challenge_day: String, seed_value: int) -> void:
 	mode = game_mode
@@ -55,37 +54,7 @@ func play(slot: int, origin: Vector2i) -> Dictionary:
 	return change
 
 func refresh_availability() -> void:
-	var blocked := not cutters.has_move(board)
-	waiting = blocked and board.has_pending()
-	ended = blocked and not waiting
-
-func wait_turn() -> Dictionary:
-	if not waiting or ended:
-		return {}
-	streak = 0
-	var completed: Array[int] = []
-	var change := board.advance(completed, BALANCE.refill_delay(score))
-	refresh_availability()
-	change.removed = []
-	change.completed = completed
-	change.lines = 0
-	change.points = 0
-	return change
-
-func can_continue() -> bool:
-	return ended and mode == ENDLESS and not used_continue
-
-func continue_run() -> bool:
-	if not can_continue():
-		return false
-	used_continue = true
-	recorded = false
-	ended = false
-	waiting = false
-	streak = 0
-	board.reset()
-	cutters.deal(board, tier())
-	return true
+	ended = not cutters.has_move(board)
 
 func snapshot() -> Dictionary:
 	return {
@@ -129,7 +98,6 @@ func restore(data: Dictionary) -> bool:
 	used_continue = data.get("used_continue", false)
 	ended = data.get("ended", false)
 	recorded = data.get("recorded", false)
-	waiting = false
 	if legacy:
 		board.reset()
 		for y in BoardManager.SIZE:

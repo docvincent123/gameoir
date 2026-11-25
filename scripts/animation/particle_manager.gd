@@ -9,10 +9,10 @@ class Particle:
 	var position := Vector2.ZERO
 	var velocity := Vector2.ZERO
 	var radius := 0.0
-	var spin := 0.0
+	var gravity := 590.0
 	var skin := 0
 	var color := Color.WHITE
-	var star := false
+	var sprite := -1
 
 var particles: Array[Particle] = []
 var cursor := 0
@@ -21,7 +21,8 @@ func _init() -> void:
 	for i in LIMIT:
 		particles.append(Particle.new())
 
-func burst(at: Vector2, count: int, skin: int, tint: Color, sparks := false, force := 1.0) -> void:
+func burst(at: Vector2, count: int, skin: int, tint: Color, sparks := false, force := 1.0,
+		sprite := -1) -> void:
 	for i in count:
 		var particle := particles[cursor]
 		cursor = (cursor + 1) % LIMIT
@@ -30,10 +31,10 @@ func burst(at: Vector2, count: int, skin: int, tint: Color, sparks := false, for
 		particle.position = at + Vector2(randf_range(-8, 8), randf_range(-8, 8))
 		particle.velocity = Vector2.from_angle(randf_range(-PI * 0.99, -0.03)) * randf_range(90, 390) * force
 		particle.radius = randf_range(6, 19) * force
-		particle.spin = randf_range(-0.4, 0.4)
+		particle.gravity = 210.0 if sparks else 590.0
 		particle.skin = skin
 		particle.color = tint
-		particle.star = sparks
+		particle.sprite = ClayArt.Effect.GLINT if sparks and sprite < 0 else sprite
 
 func tick(delta: float) -> bool:
 	var was_active := false
@@ -43,7 +44,7 @@ func tick(delta: float) -> bool:
 		was_active = true
 		particle.life -= delta
 		particle.position += particle.velocity * delta
-		particle.velocity.y += 590.0 * delta
+		particle.velocity.y += particle.gravity * delta
 	return was_active
 
 func render(canvas: CanvasItem, art: ClayArt) -> void:
@@ -54,8 +55,8 @@ func render(canvas: CanvasItem, art: ClayArt) -> void:
 		var fade := smoothstep(0.0, 0.4, ratio)
 		var radius := particle.radius * lerpf(0.4, 1.0, fade)
 		var color := Color(particle.color, fade)
-		if particle.star:
-			art.sparkle(canvas, particle.position, radius, color, (1.0 - ratio) * particle.spin)
+		if particle.sprite >= 0:
+			art.effect(canvas, particle.sprite, particle.position, radius * 2.6, color)
 		else:
 			art.cell(canvas, Rect2(particle.position - Vector2.ONE * radius, Vector2.ONE * radius * 2), particle.skin, ClayArt.CRUMB, color)
 

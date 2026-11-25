@@ -7,20 +7,20 @@ const REFILL := 0.33
 var change: Dictionary = {}
 var stamp_id := ""
 var stamp_center := Vector2.ZERO
-var stamp_unit := 0.0
 var refill_center := Vector2.ZERO
 var palette: Array = [0]
+var cut_effect := 0
 var elapsed := 1.0
 var raised := false
 var glowing := false
 var active := false
 
-func start(result: Dictionary, id: String, center: Vector2, unit: float, colors: Array) -> void:
+func start(result: Dictionary, id: String, center: Vector2, colors: Array, effect: int) -> void:
 	change = result
 	stamp_id = id
 	stamp_center = center
-	stamp_unit = unit
 	palette = colors
+	cut_effect = effect
 	elapsed = 0.0
 	raised = false
 	glowing = false
@@ -35,7 +35,7 @@ func step(delta: float) -> void:
 func duration() -> float:
 	if not change.refilled.is_empty():
 		return 0.76
-	return 0.17 if stamp_id.is_empty() else 0.52
+	return 0.52
 
 func displace(streak: int, reduced: bool) -> Vector2:
 	if not active or reduced or not glowing or streak < 3:

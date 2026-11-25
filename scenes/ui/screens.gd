@@ -4,6 +4,10 @@ const TABS := ["MATERIALS", "CUTTERS", "STYLES", "EFFECTS"]
 const HISTORY_PAGE_SIZE := 5
 const SETTINGS_ICONS := [&"music", &"sound", &"haptics", &"shine", &"globe"]
 
+var preview_index := -1
+var preview_progress := 1.0
+var preview_tween: Tween
+
 func render(app) -> void:
 	match app.view:
 		"collection":
@@ -32,13 +36,16 @@ func collection(app) -> void:
 		var option: Array = variants[i]
 		var card := Rect2(76, 390 + i * 287, 928, 243)
 		var unlocked := tally >= int(option[1])
-		app.button("option_%d" % i, card, "", active == i, false, not unlocked, paints[(i + app.collection_tab) % paints.size()])
+		var paint: Color = paints[(i + app.collection_tab) % paints.size()]
+		if key == "effect" and not unlocked:
+			paint = paint.lerp(app.PAPER, 0.35)
+		app.button("option_%d" % i, card, "", active == i, false, not unlocked and key != "effect", paint)
 		var tint: Color = option[2]
 		if key == "metal":
 			app.art.cutter(app, "t_0", card.position + Vector2(125, 117), 56, tint)
 		elif key == "effect":
-			app.art.icon(app, &"shine", card.position + Vector2(126, 117), 100.0, tint)
-			app.art.icon(app, &"shine", card.position + Vector2(177, 73), 43.0)
+			draw_effect(app, i, card.position + Vector2(126, 118))
+			app.art.icon(app, &"play", card.position + Vector2(847, 120), 60.0)
 		else:
 			app.panel(Rect2(card.position + Vector2(60, 54), Vector2(132, 132)), tint, 29, tint.lightened(0.28), 3)
 			app.art.cell(app, Rect2(card.position + Vector2(91, 84), Vector2(69, 69)), ThemeCatalog.STUDIO_START + i, 0)
@@ -168,13 +175,20 @@ func settings(app) -> void:
 
 func activate(app, id: String) -> void:
 	if id.begins_with("tab_"):
+		reset_effect_preview()
 		app.collection_tab = int(id.get_slice("_", 1))
 	elif id == "theme_auto":
 		app.save.set_setting("material", -1)
 	elif id.begins_with("skin_"):
 		app.save.set_setting("material", int(id.get_slice("_", 1)))
 	elif id.begins_with("option_"):
-		app.save.set_setting(tab_key(app.collection_tab), int(id.get_slice("_", 1)))
+		var key := tab_key(app.collection_tab)
+		var option := int(id.get_slice("_", 1))
+		if key == "effect":
+			play_effect_preview(app, option)
+			if app.save.stat("lines") < ThemeCatalog.EFFECTS[option][1]:
+				return
+		app.save.set_setting(key, option)
 		app.apply_settings()
 	elif id == "history_prev" or id == "history_next":
 		app.history_page += 1 if id == "history_next" else -1
@@ -187,6 +201,30 @@ func activate(app, id: String) -> void:
 		else:
 			app.save.set_setting(key, not app.save.setting(key, key != "reduced"))
 		app.apply_settings()
+
+func draw_effect(app, index: int, center: Vector2) -> void:
+	var lift := sin(preview_progress * PI) if index == preview_index else 0.0
+	app.art.effect(app, ClayArt.EFFECT_PREVIEWS[index], center + Vector2(0, -18 * lift), 140.0 + 28 * lift)
+	if lift > 0.0:
+		app.art.effect(app, ClayArt.CUT_PULSES[index], center, 145.0 + 43 * preview_progress, Color(Color.WHITE, 0.72 * lift))
+
+func play_effect_preview(app, index: int) -> void:
+	reset_effect_preview()
+	if app.reduced:
+		return
+	preview_index = index
+	preview_progress = 0.0
+	preview_tween = create_tween()
+	preview_tween.tween_method(func(progress: float) -> void:
+		preview_progress = progress
+		app.queue_redraw()
+	, 0.0, 1.0, 0.62)
+
+func reset_effect_preview() -> void:
+	if preview_tween != null:
+		preview_tween.kill()
+	preview_index = -1
+	preview_progress = 1.0
 
 func tab_key(tab: int) -> String:
 	return ["material", "metal", "workshop", "effect"][tab]

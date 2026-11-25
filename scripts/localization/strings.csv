@@ -15,9 +15,7 @@ SCORE,Score,Рахунок,Wynik,Punkte,Puntuación,Score
 GAME_OVER,Out of moves,Ходи закінчилися,Brak ruchów,Keine Züge mehr,Sin movimientos,Aucun coup possible
 PAUSED,Paused,Пауза,Pauza,Pause,En pausa,En pause
 PLAY_AGAIN,Play again,Зіграти знову,Zagraj ponownie,Erneut spielen,Jugar otra vez,Rejouer
-CONTINUE,Continue once,Ще один шанс,Jeszcze jedna szansa,Einmal fortsetzen,Una oportunidad más,Une seconde chance
 ASSISTED,Assisted run,Гра з продовженням,Gra z pomocą,Partie mit Hilfe,Partida asistida,Partie assistée
-ASSISTED_NOTE,Refill the board and keep your score in the assisted records.,Відновіть поле та збережіть рахунок у рекордах ігор з продовженням.,Odnów planszę i zachowaj wynik w rekordach z pomocą.,Fülle das Feld auf und speichere den Punktestand bei den Rekorden mit Hilfe.,Rellena el tablero y guarda tu puntuación en récords asistidos.,Remplis le plateau et garde ton score dans les records assistés.
 DRAG_HINT,Drag a cutter onto the clay,Перетягніть формочку на пластилін,Przeciągnij foremkę na plastelinę,Ziehe eine Form auf die Knete,Arrastra un molde a la arcilla,Glisse un emporte-pièce sur la pâte
 REFILL_HINT,Clear a line to start its refill countdown.,"Виріжте лінію, щоб почався відлік до відновлення.","Wytnij linię, aby rozpocząć odliczanie.","Schneide eine Linie aus, um den Countdown zu starten.",Corta una línea para iniciar la cuenta atrás.,Découpe une ligne pour lancer son compte à rebours.
 CUTTERS,Cutters,Формочки,Foremki,Formen,Moldes,Emporte-pièces
@@ -91,7 +89,6 @@ REFILL_IN,Refill in %s turns,Відновлення за %s ходи,Uzupełnien
 REFILL_DELAY,Refill delay  ·  %s,Ходів до відновлення  ·  %s,Opóźnienie  ·  %s,Füllzeit  ·  %s,Demora del relleno  ·  %s,Délai de remplissage  ·  %s
 LINE_QUEUED,Line ready,Лінія в черзі,Linia w kolejce,Linie vorgemerkt,Línea en cola,Ligne en attente
 MULTI_QUEUED,%s lines queued,Ліній у черзі: %s,%s linie w kolejce,%s Linien vorgemerkt,%s líneas en cola,%s lignes en attente
-WAIT_TURN,Wait 1 turn,Зачекати 1 хід,Poczekaj 1 turę,1 Zug warten,Espera 1 turno,Attendre 1 tour
 SKIN_MINT,Mint,М’ята,Mięta,Minze,Menta,Menthe
 SKIN_CONFETTI,Confetti,Конфеті,Konfetti,Konfetti,Confeti,Confettis
 SKIN_WAFFLE,Waffle,Вафля,Wafel,Waffel,Gofre,Gaufre
