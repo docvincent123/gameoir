@@ -69,6 +69,19 @@ def prepare_icons(source):
     atlas.save(DESTINATION / "icons.png", optimize=True)
 
 
+def prepare_seals(source):
+    sheet = Image.open(source).convert("RGBA")
+    atlas = Image.new("RGBA", (320, 320))
+    for index in range(4):
+        row, column = divmod(index, 2)
+        seal = isolated(sheet.crop((column * sheet.width // 2, row * sheet.height // 2,
+                                   (column + 1) * sheet.width // 2, (row + 1) * sheet.height // 2)))
+        seal.thumbnail((148, 148), Image.Resampling.LANCZOS)
+        atlas.paste(seal, (column * 160 + (160 - seal.width) // 2,
+                           row * 160 + (160 - seal.height) // 2))
+    atlas.save(DESTINATION / "seals.png", optimize=True)
+
+
 def prepare_effects(source):
     atlas = Image.new("RGBA", (160 * 3, 160 * 3))
     for index, sprite in enumerate(sprite_grid(source, .075)):
@@ -192,6 +205,7 @@ if __name__ == "__main__":
     parser.add_argument("--cubes", type=Path)
     parser.add_argument("--hero", type=Path)
     parser.add_argument("--effects", type=Path)
+    parser.add_argument("--seals", type=Path)
     options = parser.parse_args()
     DESTINATION.mkdir(parents=True, exist_ok=True)
     if options.frame:
@@ -202,6 +216,8 @@ if __name__ == "__main__":
         prepare_icons(options.icons)
     if options.effects:
         prepare_effects(options.effects)
+    if options.seals:
+        prepare_seals(options.seals)
     if options.cubes:
         prepare_cubes(options.cubes)
     if options.hero:

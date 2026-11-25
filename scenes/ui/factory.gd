@@ -33,14 +33,21 @@ const RETURN_DURATION := 0.30
 const SLOT_PREVIEW := Vector2(224, 129)
 const BUTTON_ICONS := {
 	"play": &"play", "daily": &"calendar", "collection": &"collection",
-	"records": &"trophy", "settings": &"settings", "pause": &"pause", "back": &"back",
+	"records": &"trophy", "settings": &"settings", "pause": &"pause", "back": &"arrow_left",
 	"resume_game": &"play", "again": &"restart", "home": &"home",
-	"pause_settings": &"settings",
+	"pause_settings": &"sliders", "copy_daily": &"copy",
+	"history_prev": &"previous", "history_next": &"next", "shape_prev": &"previous", "shape_next": &"next",
+	"shape_filter": &"cycle", "shapes_catalog": &"shapes", "metal_finishes": &"sliders",
 	"tab_0": &"collection", "tab_1": &"cutter", "tab_2": &"home", "tab_3": &"shine",
 }
 
 var view := "menu"
-var overlay := ""
+var overlay := "":
+	set(value):
+		if overlay != value:
+			overlay = value
+			overlay_age = 0.0
+var overlay_age := 0.24
 var day := ""
 var save := SaveManager.new()
 var run: GameManager
@@ -73,6 +80,7 @@ var score_tween: Tween
 var fade_age := 1.0
 var over_age := 0.0
 var banner := ""
+var banner_seal := -1
 var banner_age := 2.1
 var best_celebrated := false
 var daily_result_copied := false
@@ -154,6 +162,7 @@ func open(screen: String) -> void:
 		history_page = 0
 	if screen == "collection":
 		collection_tab = 0
+		pages.reset_collection()
 	queue_redraw()
 
 func start(mode: String, resume: bool) -> void:
@@ -172,6 +181,8 @@ func start(mode: String, resume: bool) -> void:
 	open("game")
 	animation = AnimationManager.new()
 	particles.clear()
+	if score_tween != null:
+		score_tween.kill()
 	score_face = run.score
 	over_age = 1.0 if run.ended else 0.0
 	if run.ended:
@@ -186,6 +197,9 @@ func _process(delta: float) -> void:
 		clock -= 600.0
 	var needs_redraw := fade_age < 0.3 or (view == "menu" and not reduced)
 	fade_age = minf(0.3, fade_age + delta)
+	if not overlay.is_empty() and not reduced and overlay_age < 0.24:
+		overlay_age = minf(0.24, overlay_age + delta)
+		needs_redraw = true
 	if view == "game" and return_slot >= 0:
 		return_age += delta
 		if return_age >= RETURN_DURATION:
@@ -235,7 +249,9 @@ func announce_completion() -> void:
 		line = "%s ×%d" % [tr(ComboManager.caption(run.streak)), ComboManager.multiplier(run.streak, GameManager.BALANCE)]
 	else:
 		line = tr("LINE_QUEUED") if animation.change.lines == 1 else tr("MULTI_QUEUED") % animation.change.lines
-	if order.bonus > 0 or banner != tr("NEW_BEST") or banner_age >= 1.65:
+	if order.bonus > 0:
+		announce(line, ClayArt.Seal.PRECISE if order.clean else ClayArt.Seal.ORDER)
+	elif banner != tr("NEW_BEST") or banner_age >= 1.65:
 		announce(line)
 	if order.bonus > 0 or run.streak >= 2 or animation.change.lines >= 2:
 		audio.effect("combo")
@@ -262,8 +278,9 @@ func burst_cut() -> void:
 			var sprite: ClayArt.Effect = [ClayArt.Effect.CHIP, ClayArt.Effect.GLINT, ClayArt.Effect.DROP][fx]
 			particles.burst(center, 1 if fx == 0 else 3, material, Color.WHITE.lerp(color, 0.22), fx > 0, 0.81, sprite)
 
-func announce(caption: String) -> void:
+func announce(caption: String, stamp := -1) -> void:
 	banner = caption
+	banner_seal = stamp
 	banner_age = 0.0
 
 func ink(value: String, area: Rect2, size: int, color := INK, align := HORIZONTAL_ALIGNMENT_CENTER, bold := true) -> void:
@@ -281,6 +298,12 @@ func panel(area: Rect2, color: Color, radius: int, edge := Color.TRANSPARENT, bo
 func card(area: Rect2, tint := PAPER) -> void:
 	panel(Rect2(area.position + Vector2(0, 5), area.size).grow(-1), SHADOW, 29)
 	panel(area, tint, 29, tint.darkened(0.09), 2)
+
+func progress_bar(area: Rect2, progress: float, track: Color, fill: Color) -> void:
+	panel(area, track, roundi(area.size.y / 2.0))
+	if progress > 0.0:
+		panel(Rect2(area.position, Vector2(area.size.x * minf(1.0, progress), area.size.y)),
+			fill, roundi(area.size.y / 2.0))
 
 func button_face(id: String, area: Rect2) -> Rect2:
 	var travel := 8.0 * press_depth if pressed_button == id else 0.0
@@ -379,7 +402,10 @@ func draw_game() -> void:
 	if active_order:
 		status = tr("ORDER_PROGRESS") % [run.order.cells.size() - run.order.remaining(run.board), run.order.cells.size()]
 	panel(Rect2(66, 413, 444, 48), ORDER_PAPER if active_order else Color("#e8eee5"), 20)
-	ink(status, Rect2(84, 413, 407, 48), 25, WARM if active_order else TEAL, HORIZONTAL_ALIGNMENT_LEFT)
+	ink(status, Rect2(84, 410 if active_order else 413, 407, 47), 25, WARM if active_order else TEAL, HORIZONTAL_ALIGNMENT_LEFT)
+	if active_order:
+		var progress := 1.0 - float(run.order.remaining(run.board)) / run.order.cells.size()
+		progress_bar(Rect2(85, 451, 403, 4), progress, Color("#e0c9a1"), TEAL)
 	var soonest := run.board.soonest()
 	var refill_label := tr("REFILL_DELAY") % GameManager.BALANCE.refill_delay(run.score)
 	if soonest == 1:
@@ -392,7 +418,7 @@ func draw_game() -> void:
 	if run.streak > 1:
 		ink("%s ×%d" % [tr("COMBO"), ComboManager.multiplier(run.streak, GameManager.BALANCE)],
 			Rect2(372, 224, 214, 42), 25, SCORE_LABEL, HORIZONTAL_ALIGNMENT_RIGHT)
-	if banner_age < 1.65:
+	if banner_age < 1.65 and banner_seal < 0:
 		var opacity := 1.0 - smoothstep(1.30, 1.65, banner_age)
 		var area := Rect2(236, 170 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
 		panel(area, Color(ORDER_PAPER, opacity), 20)
@@ -430,6 +456,14 @@ func draw_cut_caption(hint: Dictionary) -> void:
 		elif completed > 0:
 			var label := tr("PREVIEW_ONE_LINE") if completed == 1 else tr("PREVIEW_LINES") % completed
 			ink(label, Rect2(76, 1824, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+	elif banner_seal >= 0 and banner_age < 1.65 and not run.ended:
+		var progress := 1.0 if reduced else smoothstep(0.0, 0.20, banner_age)
+		var alpha := 1.0 - smoothstep(1.39, 1.65, banner_age)
+		var toast := Rect2(152, 1749 + (1.0 - progress) * 12, 776, 87)
+		panel(toast, Color(ORDER_PAPER, alpha), 30)
+		art.seal(self, banner_seal, toast.position + Vector2(56, 43), 65.0, Color(Color.WHITE, alpha))
+		ink(banner, Rect2(toast.position + Vector2(104, 13), Vector2(636, 61)), 30,
+			Color(WARM, alpha), HORIZONTAL_ALIGNMENT_LEFT)
 	elif not hint.is_empty() or (run.cut_count < 4 and run.order.cells.is_empty() and not run.ended):
 		var title := "FIRST_CUT_HINT" if not hint.is_empty() else "DRAG_HINT"
 		ink(tr(title), Rect2(80, 1750, 920, 63), 32, INK)
@@ -493,32 +527,44 @@ func draw_drag(style: int, metal: Color) -> void:
 func draw_overlay() -> void:
 	buttons.clear()
 	disabled.clear()
-	draw_rect(Rect2(-DESIGN, DESIGN * 3), Color(0.13, 0.24, 0.20, 0.57))
+	var entrance := 1.0 if reduced else smoothstep(0.0, 0.24, overlay_age)
+	var slide := (1.0 - entrance) * 18.0
+	draw_rect(Rect2(-DESIGN, DESIGN * 3), Color(0.09, 0.20, 0.16, lerpf(0.37, 0.64, entrance)))
 	if overlay == "pause":
-		card(Rect2(115, 625, 850, 677), PAPER)
-		ink(tr("PAUSED"), Rect2(172, 681, 736, 112), 76)
-		button("resume_game", Rect2(189, 851, 702, 111), tr("RESUME"), true)
-		button("home", Rect2(189, 1000, 702, 105), tr("HOME"))
-		button("pause_settings", Rect2(189, 1142, 702, 96), tr("SETTINGS"))
+		card(Rect2(115, 625 + slide, 850, 677), PAPER)
+		ink(tr("PAUSED"), Rect2(172, 681 + slide, 736, 112), 76)
+		button("resume_game", Rect2(189, 851 + slide, 702, 111), tr("RESUME"), true)
+		button("home", Rect2(189, 1000 + slide, 702, 105), tr("HOME"))
+		button("pause_settings", Rect2(189, 1142 + slide, 702, 96), tr("SETTINGS"))
 		return
 	var daily := run.mode == GameManager.DAILY and DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD)
-	var modal := Rect2(94, 542 if daily else 597, 892, 837 if daily else 727)
+	var has_orders := run.order.completed > 0
+	var extra := 94 if has_orders else 0
+	var height := 764 + extra + (108 if daily else 0)
+	var modal := Rect2(94, (DESIGN.y - height) / 2 + slide, 892, height)
 	card(modal, PAPER)
 	var top := modal.position.y
-	art.icon(self, &"trophy", Vector2(540, top + 73), 110.0)
-	ink(tr("GAME_OVER"), Rect2(143, top + 112, 794, 104), 68)
-	var score_area := Rect2(168, top + 242, 744, 176)
-	art.skin(self, score_area, &"recess", PEACH)
-	draw_line(Vector2(540, top + 269), Vector2(540, top + 390), EDGE, 2.0, true)
-	ink(tr("SCORE"), Rect2(184, top + 266, 340, 47), 28, MUTED)
-	ink(tr("BEST"), Rect2(555, top + 266, 340, 47), 28, MUTED)
-	ink(group_int(run.score), Rect2(184, top + 313, 340, 78), 58)
-	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(555, top + 313, 340, 78), 58, WARM)
-	button("again", Rect2(168, top + 460, 744, 111), tr("PLAY_AGAIN"), true)
-	button("home", Rect2(168, top + 605, 744, 90), tr("HOME"))
+	art.seal(self, ClayArt.Seal.STAR, Vector2(540, top + 77), 113.0)
+	ink(tr("GAME_OVER"), Rect2(143, top + 126, 794, 93), 66)
+	panel(Rect2(167, top + 249, 746, 165), SCORE_PLATE, 34)
+	draw_line(Vector2(540, top + 268), Vector2(540, top + 393), Color("#57776a"), 2.0, true)
+	ink(tr("SCORE"), Rect2(184, top + 266, 340, 45), 27, SCORE_LABEL)
+	ink(tr("BEST"), Rect2(555, top + 266, 340, 45), 27, GILT)
+	ink(group_int(run.score), Rect2(184, top + 310, 340, 80), 58, PAPER)
+	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(555, top + 310, 340, 80), 58, PAPER)
+	if has_orders:
+		var summary := Rect2(168, top + 437, 744, 69)
+		panel(summary, ORDER_PAPER, 26)
+		art.seal(self, ClayArt.Seal.ORDER, Vector2(208, top + 471), 47)
+		ink(tr("ORDERS_TOTAL"), Rect2(245, top + 444, 497, 55), 27, WARM, HORIZONTAL_ALIGNMENT_LEFT)
+		ink(group_int(run.order.completed), Rect2(765, top + 444, 116, 55), 31, WARM, HORIZONTAL_ALIGNMENT_RIGHT)
+	var action := top + 455 + extra
+	button("again", Rect2(168, action, 744, 109), tr("PLAY_AGAIN"), true)
+	button("home", Rect2(168, action + 131, 744, 89), tr("HOME"))
 	if daily:
 		var text := tr("DAILY_COPIED") if daily_result_copied else tr("COPY_DAILY")
-		button("copy_daily", Rect2(168, top + 714, 744, 83), text, false, true)
+		button("copy_daily", Rect2(168, action + 239, 744, 79), text, false, true)
+
 
 func daily_result_text() -> String:
 	return "%s %s · %s\n%s\n%s %s" % [tr("TITLE_TOP"), tr("TITLE_BOTTOM"), tr("DAILY"),
@@ -680,8 +726,11 @@ func cut(slot: int, anchor: Vector2i) -> void:
 	audio.buzz(22)
 	if score_tween != null:
 		score_tween.kill()
-	score_tween = create_tween()
-	score_tween.tween_property(self, "score_face", float(run.score), 0.43).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if reduced:
+		score_face = run.score
+	else:
+		score_tween = create_tween()
+		score_tween.tween_property(self, "score_face", float(run.score), 0.43).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	if changed_best and not best_celebrated and (run.score >= 100 or run.ended):
 		best_celebrated = true
 		announce(tr("NEW_BEST"))

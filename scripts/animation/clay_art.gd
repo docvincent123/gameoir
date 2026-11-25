@@ -19,6 +19,13 @@ const SURFACES := {
 const ICON_ATLAS := preload("res://assets/ui/workshop/icons.png")
 const ICONS := [&"play", &"calendar", &"collection", &"trophy", &"settings", &"pause", &"back", &"clock", &"shine"]
 
+const CONTROL_ATLAS := preload("res://assets/ui/lucide/controls.png")
+const CONTROLS := [&"arrow_left", &"home", &"restart", &"sound", &"music", &"haptics", &"globe",
+	&"check", &"copy", &"lock", &"previous", &"next", &"shapes", &"sliders", &"cycle"]
+
+enum Seal { PRECISE, ORDER, STAR, WARM_STAR }
+const SEALS := preload("res://assets/ui/workshop/seals.png")
+
 enum Effect { CHIP, GLINT, DROP, PUFF, RING, SWOOSH, CRUMBS, SPARKS, RIBBON }
 
 const EFFECT_ATLAS := preload("res://assets/ui/workshop/effects.png")
@@ -60,6 +67,11 @@ func skin(canvas: CanvasItem, area: Rect2, kind: StringName, tint := Color.WHITE
 
 func icon(canvas: CanvasItem, id: StringName, center: Vector2, side: float, tint := Color.WHITE) -> void:
 	var area := Rect2(center - Vector2.ONE * side * 0.5, Vector2.ONE * side)
+	var control := CONTROLS.find(id)
+	if control >= 0:
+		var region := Rect2(control % 5 * 132, floori(control / 5.0) * 132, 132, 132)
+		canvas.draw_texture_rect_region(CONTROL_ATLAS, area, region, tint, false, true)
+		return
 	if id == &"star":
 		id = &"shine"
 	var painted := ICONS.find(id)
@@ -71,6 +83,11 @@ func icon(canvas: CanvasItem, id: StringName, center: Vector2, side: float, tint
 	if index >= 0:
 		var region := Rect2((index % 7) * TILE, floori(index / 7.0) * TILE, TILE, TILE)
 		canvas.draw_texture_rect_region(GLYPH_ATLAS, area, region, tint, false, true)
+
+func seal(canvas: CanvasItem, id: Seal, center: Vector2, side: float, tint := Color.WHITE) -> void:
+	var area := Rect2(center - Vector2.ONE * side * 0.5, Vector2.ONE * side)
+	var region := Rect2(id % 2 * 160, floori(id / 2.0) * 160, 160, 160)
+	canvas.draw_texture_rect_region(SEALS, area, region, tint, false, true)
 
 func effect(canvas: CanvasItem, sprite: int, center: Vector2, side: float, tint := Color.WHITE) -> void:
 	var area := Rect2(center - Vector2.ONE * side * 0.5, Vector2.ONE * side)

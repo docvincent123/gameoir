@@ -26,6 +26,7 @@ func run_tests() -> void:
 	test_visual_palette()
 	test_cut_prediction()
 	test_orders()
+	test_order_records()
 	await test_interface()
 	reset_save()
 	if failures.is_empty():
@@ -355,6 +356,23 @@ func test_orders() -> void:
 	check(restored.restore(old_snapshot) and restored.order.cells.is_empty(), "Older saves can start issuing orders normally")
 
 
+func test_order_records() -> void:
+	var storage := SaveManager.new(TEST_SAVE)
+	var run := GameManager.new()
+	run.start(GameManager.ENDLESS, "", 153)
+	run.cutters.hand.assign(["single_0", "domino_0", "corner_0"])
+	run.order.cells.assign([Vector2i(1, 1)])
+	storage.store_run(run)
+	var count := storage.stat("orders")
+	var cut := run.play(0, Vector2i(1, 1))
+	storage.update_move(run, cut.removed.size(), cut.lines)
+	check(storage.stat("orders") == count + 1, "Finished orders add to the lifetime count")
+	storage.update_move(run, 0, 0)
+	check(storage.stat("orders") == count + 1, "Saving the same order twice does not double-count it")
+	var reopened := SaveManager.new(TEST_SAVE)
+	check(reopened.stat("orders") == count + 1, "The order total survives reopening the save")
+
+
 func test_interface() -> void:
 	var app: Factory = MAIN.instantiate()
 	app.save = SaveManager.new(TEST_SAVE)
@@ -437,7 +455,14 @@ func test_interface() -> void:
 	app.open("collection")
 	await process_frame
 	await click(app, Vector2(403, 265))
-	check(app.collection_tab == 1, "Collection cutter tab")
+	check(app.collection_tab == 1 and app.buttons.has("shape_next"), "Cutter tab opens the shape gallery")
+	check(app.pages.shape_lists[0].size() == 161, "Gallery shows all cutter variants")
+	await click_button(app, "shape_next")
+	check(app.pages.shape_page == 1, "Shape gallery can move to the next page")
+	await click_button(app, "shape_filter")
+	check(app.pages.shape_filter == 0 and app.pages.shape_page == 0, "A rank filter returns to the first page")
+	await click_button(app, "metal_finishes")
+	check(app.pages.show_finishes and app.buttons.has("option_0"), "Metal finishes are available beside the gallery")
 	await click_button(app, "tab_3")
 	await click_button(app, "option_1")
 	check(app.pages.preview_index == 1 and app.save.setting("effect", 0) == 0, "Locked effect can be previewed")

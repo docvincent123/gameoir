@@ -12,6 +12,7 @@ const NAVIGATION := [
 func render(app) -> void:
 	var current: bool = app.save.has_active_run(GameManager.ENDLESS, app.day)
 	var floating: float = sin(app.clock * 1.45) * 6.0 if not app.reduced else 0.0
+	app.panel(Rect2(306, 268, 468, 470), Color("#eee8d5", 0.62), 208)
 	var scale := minf(650.0 / HERO.get_width(), 510.0 / HERO.get_height())
 	var size := HERO.get_size() * scale
 	app.draw_texture_rect(HERO, Rect2(Vector2((1080.0 - size.x) / 2.0, 498.0 - size.y / 2.0 + floating), size), false)
@@ -25,16 +26,17 @@ func render(app) -> void:
 	var green: Color = app.SCORE_PLATE.lightened(0.12) if app.hovered == "play" else app.SCORE_PLATE
 	app.panel(Rect2(PLAY_AREA.position + Vector2(0, 8), PLAY_AREA.size), Color("#173c31"), 42)
 	app.panel(play, green, 42)
-	app.ink(tr("RESUME") if current else tr("PLAY"), play.grow(-18), 48, app.PAPER)
+	app.ink(tr("RESUME") if current else tr("PLAY"), Rect2(play.position + Vector2(46, 0), Vector2(play.size.x - 110, play.size.y)), 48, app.PAPER)
+	app.art.icon(app, &"next", play.end - Vector2(65, play.size.y / 2), 42.0, app.PAPER)
 
 	app.register_button("daily", DAILY_AREA)
 	var daily: Rect2 = app.button_face("daily", DAILY_AREA)
 	app.panel(daily, Color("#f2eddf") if app.hovered == "daily" else Color("#fffbee"), 33, Color("#c9d4c9"), 2)
 	app.ink(tr("DAILY"), daily.grow(-19), 34)
-	if app.save.has_active_run(GameManager.DAILY, app.day):
-		app.art.icon(app, &"clock", daily.position + Vector2(46, 51), 36)
+	var daily_icon := &"clock" if app.save.has_active_run(GameManager.DAILY, app.day) else &"calendar"
+	app.art.icon(app, daily_icon, daily.position + Vector2(62, 51), 43)
 
-	app.draw_line(Vector2(82, 1513), Vector2(998, 1513), app.EDGE, 2.0, true)
+	app.card(Rect2(55, 1519, 970, 177), Color("#fbf8ef"))
 	for index in NAVIGATION.size():
 		var entry: Array = NAVIGATION[index]
 		var area := Rect2(72 + index * 316, 1542, 304, 146)

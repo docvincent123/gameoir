@@ -165,7 +165,9 @@ func stamp(canvas: CanvasItem, art: ClayArt, unit: float,
 	var elapsed := animation.elapsed
 	var pressing := clampf(elapsed / AnimationManager.PRESS, 0.0, 1.0)
 	if elapsed < 0.26:
-		var center := animation.stamp_center + Vector2(0, -29.0 * (1.0 - pressing * pressing))
+		var descent := pressing * pressing
+		var contact := sin(clampf((elapsed - AnimationManager.PRESS) / 0.095, 0, 1) * PI)
+		var center := animation.stamp_center + Vector2(0, -36.0 * (1.0 - descent) + 5.0 * contact)
 		var fade := 1.0 - smoothstep(AnimationManager.PRESS, 0.26, elapsed)
 		art.cutter(canvas, animation.stamp_id, center, unit * lerpf(1.025, 1.0, pressing), Color(metal, fade))
 	if not reduced and elapsed >= AnimationManager.PRESS and elapsed < 0.44:
@@ -184,6 +186,13 @@ func stamp(canvas: CanvasItem, art: ClayArt, unit: float,
 		var origin := center - Vector2(form.size) * cut_unit / 2.0
 		slab.piece(canvas, form.cells, animation.change.origin, origin, cut_unit,
 			animation.slab_style, Color(Color.WHITE, opacity), unit * lerpf(0.08, 0.18, lift))
+
+	if not reduced and animation.change.order.done and elapsed > AnimationManager.PRESS + 0.06:
+		var progress := smoothstep(0.19, 0.49, elapsed)
+		var seal := ClayArt.Seal.PRECISE if animation.change.order.clean else ClayArt.Seal.ORDER
+		var point := animation.stamp_center + Vector2(unit * 0.32, -unit * (0.32 + 0.27 * progress))
+		var scale := 0.77 + sin(progress * PI) * 0.35
+		art.seal(canvas, seal, point, unit * scale, Color(Color.WHITE, minf(1.0, sin(progress * PI) * 2.5)))
 
 func line_offset(change: Dictionary, tile: Vector2i) -> int:
 	var offset := BoardManager.SIZE

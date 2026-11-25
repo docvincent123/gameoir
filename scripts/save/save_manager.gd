@@ -89,6 +89,14 @@ func update_move(run: GameManager, cells: int, lines: int) -> bool:
 	data.set_value("stats", "cells", stat("cells") + cells)
 	data.set_value("stats", "lines", stat("lines") + lines)
 	data.set_value("stats", "combo", maxi(stat("combo"), run.max_streak))
+	var saved: Dictionary = data.get_value("runs", run.mode, {})
+	var previous_orders := 0
+	if not saved.is_empty() and saved.get("day", "") == run.day:
+		var order: Dictionary = saved.get("order", {})
+		previous_orders = int(order.get("completed", 0))
+	var added := maxi(0, run.order.completed - previous_orders)
+	if added > 0:
+		data.set_value("stats", "orders", stat("orders") + added)
 	if run.ended:
 		record(run)
 	store_run(run)

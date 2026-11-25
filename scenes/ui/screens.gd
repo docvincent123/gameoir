@@ -2,11 +2,35 @@ extends Node2D
 
 const TABS := ["MATERIALS", "CUTTERS", "STYLES", "EFFECTS"]
 const HISTORY_PAGE_SIZE := 5
-const SETTINGS_ICONS := [&"music", &"sound", &"haptics", &"shine", &"globe"]
+const SHAPE_PAGE_SIZE := 16
+const GALLERY_CLAYS := ThemeCatalog.WARM_PALETTE + ThemeCatalog.COOL_PALETTE
+const SETTINGS_ICONS := [&"music", &"sound", &"haptics", &"sliders", &"globe"]
 
 var preview_index := -1
 var preview_progress := 1.0
 var preview_tween: Tween
+
+var all_shapes := ShapeGenerator.new().shapes
+var shape_lists: Array = [[]]
+var shape_page := 0
+var shape_filter := -1
+var show_finishes := false
+var switch_key := ""
+var switch_position := 0.0
+var switch_tween: Tween
+
+func _ready() -> void:
+	for tier in DifficultyManager.RANKS.size():
+		shape_lists.append([])
+		for id: String in all_shapes:
+			if int(all_shapes[id].tier) == tier:
+				shape_lists[tier + 1].append(id)
+				shape_lists[0].append(id)
+
+func reset_collection() -> void:
+	shape_page = 0
+	shape_filter = -1
+	show_finishes = false
 
 func render(app) -> void:
 	match app.view:
@@ -23,10 +47,16 @@ func collection(app) -> void:
 	for i in TABS.size():
 		var active: bool = i == app.collection_tab
 		app.button("tab_%d" % i, Rect2(55 + 246 * i, 221, 226, 82), tr(TABS[i]),
-			active, true, false, paints[i] if active else app.PAPER)
+			active, true, false, app.MINT if active else app.PAPER)
 	if app.collection_tab == 0:
 		materials(app)
 		return
+	if app.collection_tab == 1:
+		app.button("shapes_catalog", Rect2(63, 333, 466, 79), tr("CUTTERS"), not show_finishes, true)
+		app.button("metal_finishes", Rect2(551, 333, 466, 79), tr("FINISHES"), show_finishes, true)
+		if not show_finishes:
+			shape_catalog(app)
+			return
 
 	var key := tab_key(app.collection_tab)
 	var variants := tab_options(app.collection_tab)
@@ -34,7 +64,8 @@ func collection(app) -> void:
 	var active := ThemeCatalog.unlocked_choice(app.save, key, variants, tally)
 	for i in variants.size():
 		var option: Array = variants[i]
-		var card := Rect2(76, 390 + i * 287, 928, 243)
+		var top := 468 if key == "metal" else 390
+		var card := Rect2(76, top + i * 287, 928, 243)
 		var unlocked := tally >= int(option[1])
 		var paint: Color = paints[(i + app.collection_tab) % paints.size()]
 		if key == "effect" and not unlocked:
@@ -57,6 +88,37 @@ func collection(app) -> void:
 		app.ink(status, Rect2(card.position + Vector2(239, 127), Vector2(642, 51)), 28,
 			app.WARM if active == i else app.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 
+func shape_catalog(app) -> void:
+	var entries: Array = shape_lists[shape_filter + 1]
+	var filter := tr("ALL_LEVELS") if shape_filter < 0 else tr(DifficultyManager.RANKS[shape_filter])
+	app.button("shape_filter", Rect2(63, 440, 436, 70), filter, false, true)
+	app.ink(tr("SHAPE_COUNT") % app.group_int(entries.size()), Rect2(530, 441, 479, 68),
+		25, app.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+
+	var selected := ThemeCatalog.unlocked_choice(app.save, "metal", ThemeCatalog.CUTTERS, app.save.stat("cells"))
+	var metal: Color = ThemeCatalog.CUTTERS[selected][2]
+	var begin := shape_page * SHAPE_PAGE_SIZE
+	var end := mini(begin + SHAPE_PAGE_SIZE, entries.size())
+	for index in range(begin, end):
+		var offset := index - begin
+		var row := floori(offset / 4.0)
+		var column := offset % 4
+		var area := Rect2(58 + column * 245, 538 + row * 239, 229, 219)
+		var id: String = entries[index]
+		var form: Dictionary = all_shapes[id]
+		var clay: int = GALLERY_CLAYS[(index + row) % GALLERY_CLAYS.size()]
+		app.card(area)
+		var unit: float = app.preview_unit(form, 161.0, 105.0)
+		app.draw_form(form, id, area.position + Vector2(114.5, 83), unit, clay, metal, Color.WHITE)
+		app.ink(tr("SHAPE_CELLS") % form.cells.size(), Rect2(area.position + Vector2(10, 162), Vector2(209, 39)),
+			24, app.MUTED)
+
+	var pages := maxi(1, ceili(float(entries.size()) / SHAPE_PAGE_SIZE))
+	app.button("shape_prev", Rect2(62, 1543, 139, 82), "", false, true, shape_page == 0)
+	app.button("shape_next", Rect2(879, 1543, 139, 82), "", false, true, shape_page + 1 >= pages)
+	app.ink("%d / %d" % [shape_page + 1, pages], Rect2(224, 1545, 632, 78), 31, app.INK)
+
+
 func materials(app) -> void:
 	var selected: int = app.save.setting("material", -1)
 	var auto := Rect2(54, 340, 972, 109)
@@ -77,7 +139,7 @@ func materials(app) -> void:
 		var unlocked: bool = app.save.best() >= int(item[1])
 		var id := "skin_%d" % skin
 		var tint: Color = paints[skin % paints.size()]
-		app.button(id, card, "", selected == skin, false, not unlocked, tint)
+		app.button(id, card, "", selected == skin, false, not unlocked, app.MINT if selected == skin else app.PAPER)
 		var item_face: Rect2 = app.button_face(id, card)
 		app.art.skin(app, Rect2(item_face.position + Vector2(28, 13), Vector2(180, 145)), &"recess", tint)
 		app.art.cell(app, Rect2(item_face.position + Vector2(56, 23), Vector2(124, 124)), skin, 0)
@@ -88,6 +150,8 @@ func materials(app) -> void:
 		app.ink(status, Rect2(item_face.position + Vector2(11, 216), Vector2(214, 41)), 23, app.TEAL if unlocked else app.MUTED)
 		if selected == skin:
 			app.art.icon(app, &"check", item_face.position + Vector2(199, 36), 37.0, app.TEAL)
+		elif not unlocked:
+			app.art.icon(app, &"lock", item_face.position + Vector2(199, 36), 25.0, app.MUTED)
 
 func records(app) -> void:
 	app.refresh_day()
@@ -102,25 +166,33 @@ func records(app) -> void:
 	var stats := [["CELLS_TOTAL", "cells"], ["LINES_TOTAL", "lines"], ["MAX_COMBO", "combo"], ["GAMES_TOTAL", "games"]]
 	for i in stats.size():
 		var stat: Array = stats[i]
-		var card := Rect2(56 + 493 * (i % 2), 435 + 112 * floori(float(i) / 2.0), 475, 97)
+		var card := Rect2(56 + 493 * (i % 2), 428 + 98 * floori(float(i) / 2.0), 475, 84)
 		app.card(card, [app.MINT, app.SKY, app.LILAC, app.PEACH][i])
-		app.ink(tr(stat[0]), Rect2(card.position + Vector2(23, 9), Vector2(273, 79)), 28,
+		app.ink(tr(stat[0]), Rect2(card.position + Vector2(23, 9), Vector2(273, 66)), 27,
 			app.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-		app.ink(app.group_int(app.save.stat(stat[1])), Rect2(card.position + Vector2(305, 9), Vector2(146, 79)),
+		app.ink(app.group_int(app.save.stat(stat[1])), Rect2(card.position + Vector2(305, 9), Vector2(146, 66)),
 			34, app.INK, HORIZONTAL_ALIGNMENT_RIGHT)
 
-	app.ink(tr("ACHIEVEMENTS"), Rect2(62, 685, 955, 70), 43, app.INK, HORIZONTAL_ALIGNMENT_LEFT)
+	app.card(Rect2(56, 624, 968, 84), app.ORDER_PAPER)
+	app.art.seal(app, ClayArt.Seal.ORDER, Vector2(104, 666), 48)
+	app.ink(tr("ORDERS_TOTAL"), Rect2(145, 632, 661, 65), 29, app.WARM, HORIZONTAL_ALIGNMENT_LEFT)
+	app.ink(app.group_int(app.save.stat("orders")), Rect2(836, 632, 158, 65), 34,
+		app.WARM, HORIZONTAL_ALIGNMENT_RIGHT)
+	app.ink(tr("ACHIEVEMENTS"), Rect2(62, 728, 955, 66), 41, app.INK, HORIZONTAL_ALIGNMENT_LEFT)
 	for i in ThemeCatalog.ACHIEVEMENTS.size():
 		var achievement: Array = ThemeCatalog.ACHIEVEMENTS[i]
-		var card := Rect2(56 + 493 * (i % 2), 780 + 114 * floori(float(i) / 2.0), 475, 96)
+		var card := Rect2(56 + 493 * (i % 2), 814 + 108 * floori(float(i) / 2.0), 475, 93)
 		var progress := mini(app.save.stat(achievement[1]), int(achievement[2]))
 		var done := progress >= int(achievement[2])
 		app.card(card, app.SUN if done else app.PAPER)
-		app.art.icon(app, &"star", card.position + Vector2(49, 48), 49.0, Color.WHITE if done else Color("#cca87f"))
+		var seal := ClayArt.Seal.STAR if done else ClayArt.Seal.WARM_STAR
+		app.art.seal(app, seal, card.position + Vector2(48, 46), 55.0)
 		app.ink(tr(achievement[0]), Rect2(card.position + Vector2(88, 13), Vector2(355, 36)), 29,
 			app.INK, HORIZONTAL_ALIGNMENT_LEFT)
 		app.ink("%s / %s" % [app.group_int(progress), app.group_int(achievement[2])],
-			Rect2(card.position + Vector2(88, 52), Vector2(355, 30)), 22, app.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+			Rect2(card.position + Vector2(88, 47), Vector2(355, 29)), 21, app.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+		app.progress_bar(Rect2(card.position + Vector2(90, 79), Vector2(353, 4)), float(progress) / int(achievement[2]),
+			app.EDGE, app.TEAL)
 	app.ink(tr("HISTORY"), Rect2(62, 1047, 955, 67), 43, app.INK, HORIZONTAL_ALIGNMENT_LEFT)
 	var history: Array = app.save.history()
 	if history.is_empty():
@@ -143,40 +215,75 @@ func records(app) -> void:
 		app.ink(app.group_int(entry.score), Rect2(row.position + Vector2(694, 8), Vector2(241, 76)),
 			36, app.WARM, HORIZONTAL_ALIGNMENT_RIGHT)
 	if history.size() > HISTORY_PAGE_SIZE:
-		app.button("history_prev", Rect2(55, 1746, 145, 83), "‹", false, true, page == 0)
-		app.button("history_next", Rect2(880, 1746, 145, 83), "›", false, true, last == history.size())
+		app.button("history_prev", Rect2(55, 1746, 145, 83), "", false, true, page == 0)
+		app.button("history_next", Rect2(880, 1746, 145, 83), "", false, true, last == history.size())
 		app.ink("%d / %d" % [page + 1, ceili(float(history.size()) / HISTORY_PAGE_SIZE)],
 			Rect2(224, 1747, 632, 82), 30, app.MUTED)
 
 func settings(app) -> void:
 	app.header("SETTINGS")
 	var choices := [["MUSIC", "music"], ["SOUND", "sound"], ["HAPTICS", "haptics"], ["QUALITY", "reduced"], ["LANGUAGE", "language"]]
+	var paints: Array = [app.PEACH, app.SKY, app.ROSE, app.SUN, app.LILAC]
 	for i in choices.size():
 		var option: Array = choices[i]
 		var row := Rect2(58, 254 + 181 * i, 964, 143)
-		app.card(row, [app.PEACH, app.SKY, app.ROSE, app.SUN, app.LILAC][i])
-		app.art.icon(app, SETTINGS_ICONS[i], row.position + Vector2(55, 71), 67,
-			Color.WHITE if SETTINGS_ICONS[i] in ClayArt.ICONS else app.TEAL)
-		app.ink(tr(option[0]), Rect2(row.position + Vector2(103, 20), Vector2(395, 103)), 43,
+		app.card(row)
+		app.panel(Rect2(row.position + Vector2(26, 37), Vector2(70, 70)), paints[i], 23)
+		app.art.icon(app, SETTINGS_ICONS[i], row.position + Vector2(61, 72), 42, app.TEAL)
+		app.ink(tr(option[0]), Rect2(row.position + Vector2(119, 20), Vector2(389, 103)), 39,
 			app.INK, HORIZONTAL_ALIGNMENT_LEFT)
-		var text := ""
-		var active := false
-		if option[1] == "language":
+		var key: String = option[1]
+		var action := Rect2(row.position + Vector2(530, 27), Vector2(390, 84))
+		if key == "language":
 			var idx := maxi(0, LocalizationManager.LANGUAGES.find(app.save.setting("language", "auto")))
-			text = tr("AUTOMATIC") if idx == 0 else LocalizationManager.LABELS[idx]
-			text += "  ›"
-		elif option[1] == "reduced":
-			text = tr("REDUCED") if app.reduced else tr("HIGH")
+			var language: String = tr("AUTOMATIC") if idx == 0 else LocalizationManager.LABELS[idx]
+			app.button("setting_language", action, language + "  ›", false, true)
+		elif key == "reduced":
+			app.button("setting_reduced", action, tr("REDUCED") if app.reduced else tr("HIGH"), false, true)
 		else:
-			active = app.save.setting(option[1], true)
-			text = tr("ON") if active else tr("OFF")
-		app.button("setting_" + option[1], Rect2(row.position + Vector2(531, 27), Vector2(397, 84)),
-			text, active, true)
+			draw_switch(app, key, action, app.save.setting(key, true))
+
+func draw_switch(app, key: String, area: Rect2, active: bool) -> void:
+	var id := "setting_" + key
+	app.register_button(id, area)
+	var face: Rect2 = app.button_face(id, area)
+	var value := switch_position if switch_key == key else float(active)
+	var track := Rect2(face.position + Vector2(267, 15), Vector2(111, 54))
+	var tint: Color = app.EDGE.lerp(app.TEAL, value)
+	app.panel(track, tint, 27)
+	var center := track.position + Vector2(27 + 57 * value, 27)
+	app.draw_circle(center, 20, app.PAPER, true, -1.0, true)
+	app.ink(tr("ON" if active else "OFF"), Rect2(face.position + Vector2(4, 0), Vector2(243, 84)),
+		27, app.TEAL if active else app.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+
+func animate_switch(app, key: String, active: bool) -> void:
+	if switch_tween != null:
+		switch_tween.kill()
+	var before := switch_position if switch_key == key else float(not active)
+	switch_key = key
+	switch_position = float(active) if app.reduced else before
+	if app.reduced:
+		return
+	switch_tween = create_tween()
+	switch_tween.tween_method(func(value: float) -> void:
+		switch_position = value
+		app.queue_redraw()
+	, before, float(active), 0.19).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 func activate(app, id: String) -> void:
 	if id.begins_with("tab_"):
 		reset_effect_preview()
 		app.collection_tab = int(id.get_slice("_", 1))
+	elif id == "shapes_catalog" or id == "metal_finishes":
+		show_finishes = id == "metal_finishes"
+	elif id == "shape_filter":
+		shape_filter += 1
+		if shape_filter >= DifficultyManager.RANKS.size():
+			shape_filter = -1
+		shape_page = 0
+	elif id == "shape_prev" or id == "shape_next":
+		var limit := maxi(0, ceili(float(shape_lists[shape_filter + 1].size()) / SHAPE_PAGE_SIZE) - 1)
+		shape_page = clampi(shape_page + (1 if id == "shape_next" else -1), 0, limit)
 	elif id == "theme_auto":
 		app.save.set_setting("material", -1)
 	elif id.begins_with("skin_"):
@@ -199,7 +306,10 @@ func activate(app, id: String) -> void:
 			var next := (idx + 1) % LocalizationManager.LANGUAGES.size()
 			app.save.set_setting(key, LocalizationManager.LANGUAGES[next])
 		else:
-			app.save.set_setting(key, not app.save.setting(key, key != "reduced"))
+			var active: bool = not app.save.setting(key, key != "reduced")
+			app.save.set_setting(key, active)
+			if key != "reduced":
+				animate_switch(app, key, active)
 		app.apply_settings()
 
 func draw_effect(app, index: int, center: Vector2) -> void:
