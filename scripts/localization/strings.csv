@@ -1,0 +1,89 @@
+keys,en,uk,pl,de,es,fr
+PLAY,Play,Грати,Graj,Spielen,Jugar,Jouer
+RESUME,Resume,Продовжити,Wznów,Fortsetzen,Reanudar,Reprendre
+DAILY,Daily challenge,Щоденне випробування,Wyzwanie dnia,Tagesaufgabe,Reto diario,Défi du jour
+COLLECTION,Collection,Колекція,Kolekcja,Sammlung,Colección,Collection
+RECORDS,Records,Рекорди,Rekordy,Rekorde,Récords,Records
+SETTINGS,Settings,Налаштування,Ustawienia,Einstellungen,Ajustes,Paramètres
+BACK,Back,Назад,Wstecz,Zurück,Atrás,Retour
+HOME,Home,Головна,Menu,Startseite,Inicio,Accueil
+TITLE_TOP,CLAY,CLAY,CLAY,CLAY,CLAY,CLAY
+TITLE_BOTTOM,FACTORY,FACTORY,FACTORY,FACTORY,FACTORY,FACTORY
+ENDLESS,Endless cut,Нескінченне вирізання,Cięcie bez końca,Endloses Schneiden,Corte infinito,Découpe infinie
+BEST,Best,Рекорд,Rekord,Bestwert,Mejor,Record
+SCORE,Score,Рахунок,Wynik,Punkte,Puntuación,Score
+GAME_OVER,Out of moves,Ходи закінчилися,Brak ruchów,Keine Züge mehr,Sin movimientos,Aucun coup possible
+PAUSED,Paused,Пауза,Pauza,Pause,En pausa,En pause
+PLAY_AGAIN,Play again,Зіграти знову,Zagraj ponownie,Erneut spielen,Jugar otra vez,Rejouer
+CONTINUE,Continue once,Ще один шанс,Jeszcze jedna szansa,Einmal fortsetzen,Una oportunidad más,Une seconde chance
+ASSISTED,Assisted run,Гра з продовженням,Gra z pomocą,Partie mit Hilfe,Partida asistida,Partie assistée
+ASSISTED_NOTE,Refill the board and keep your score in the assisted records.,Відновіть поле та збережіть рахунок у рекордах ігор з продовженням.,Odnów planszę i zachowaj wynik w rekordach z pomocą.,Fülle das Feld auf und speichere den Punktestand bei den Rekorden mit Hilfe.,Rellena el tablero y guarda tu puntuación en récords asistidos.,Remplis le plateau et garde ton score dans les records assistés.
+DRAG_HINT,Drag a cutter onto the clay,Перетягніть формочку на пластилін,Przeciągnij foremkę na plastelinę,Ziehe eine Form auf die Knete,Arrastra un molde a la arcilla,Glisse un emporte-pièce sur la pâte
+REFILL_HINT,Cut a full row or column to refill it.,"Виріжте цілий ряд або стовпець, щоб відновити його.","Wytnij cały wiersz lub kolumnę, aby je uzupełnić.","Schneide eine ganze Zeile oder Spalte aus, damit sie sich füllt.",Corta una fila o columna entera para rellenarla.,Découpe une ligne ou une colonne entière pour la remplir.
+CUTTERS,Cutters,Формочки,Foremki,Formen,Moldes,Emporte-pièces
+MATERIALS,Clay,Пластилін,Plastelina,Knete,Arcilla,Pâte
+STYLES,Workshop,Майстерня,Pracownia,Werkstatt,Taller,Atelier
+EFFECTS,Effects,Ефекти,Efekty,Effekte,Efectos,Effets
+AUTO_THEME,Follow rank,За рангом,Według rangi,Nach Rang,Según rango,Selon le rang
+SELECTED,Selected,Вибрано,Wybrano,Aktiv,Seleccionado,Sélectionné
+UNLOCK_BEST,Best %s,Рекорд %s,Rekord %s,Bestwert %s,Récord %s,Record %s
+UNLOCK_CELLS,%s cells,%s клітинок,%s pól,%s Felder,%s casillas,%s cases
+UNLOCK_LINES,%s lines,%s рядів,%s linii,%s Reihen,%s líneas,%s lignes
+COMBO,Combo,Комбо,Kombo,Kombi,Combo,Combo
+COMBO_SUPER,Super combo,Суперкомбо,Superkombo,Superkombi,Súper combo,Super combo
+COMBO_MEGA,Mega combo,Мегакомбо,Megakombo,Megakombi,Mega combo,Méga combo
+COMBO_LEGENDARY,Legendary combo,Легендарне комбо,Legendarne kombo,Legendäre Kombi,Combo legendario,Combo légendaire
+NEW_BEST,New best!,Новий рекорд!,Nowy rekord!,Neuer Rekord!,¡Nuevo récord!,Nouveau record !
+FULL_BOARD,Full board!,Усе поле!,Cała plansza!,Ganzes Feld!,¡Todo el tablero!,Plateau entier !
+LINE_REFILL,Line refill,Відновлення ряду,Uzupełnienie linii,Reihe aufgefüllt,Línea restaurada,Ligne remplie
+MULTI_REFILL,%s lines refilled,Відновлено рядів: %s,Uzupełnione linie: %s,%s Reihen aufgefüllt,%s líneas restauradas,%s lignes remplies
+RANK_BEGINNER,Clay Beginner,Початківець,Nowicjusz,Knete-Neuling,Principiante,Apprenti
+RANK_MASTER,Clay Master,Майстер пластиліну,Mistrz,Knete-Meister,Maestro,Maître
+RANK_LEGEND,Clay Legend,Легенда пластиліну,Legenda,Knete-Legende,Leyenda,Légende
+RANK_GOD,Clay God,Божество пластиліну,Bóstwo,Knete-Gottheit,Deidad,Divinité
+RANK_INFINITE,Infinite Master,Майстер нескінченності,Mistrz nieskończoności,Endlosmeister,Maestro infinito,Maître de l’infini
+SKIN_CLASSIC,Classic,Класика,Klasyczna,Klassisch,Clásica,Classique
+SKIN_RAINBOW,Rainbow,Веселка,Tęczowa,Regenbogen,Arcoíris,Arc-en-ciel
+SKIN_GALAXY,Galaxy,Галактика,Galaktyka,Galaxie,Galaxia,Galaxie
+SKIN_GOLDEN,Golden,Золото,Złota,Gold,Dorada,Dorée
+SKIN_MARBLE,Marble,Мармур,Marmurowa,Marmor,Mármol,Marbrée
+SKIN_CANDY,Candy,Цукерка,Cukierkowa,Bonbon,Caramelo,Bonbon
+SKIN_NEON,Neon,Неон,Neonowa,Neon,Neón,Néon
+SKIN_WATERMELON,Watermelon,Кавун,Arbuz,Wassermelone,Sandía,Pastèque
+SKIN_COOKIE,Cookie,Печиво,Ciasteczko,Keks,Galleta,Biscuit
+SKIN_CRYSTAL,Crystal,Кристал,Kryształ,Kristall,Cristal,Cristal
+SKIN_LAVA,Lava,Лава,Lawa,Lava,Lava,Lave
+SKIN_ICE,Ice,Лід,Lód,Eis,Hielo,Glace
+STEEL,Steel,Сталь,Stal,Stahl,Acero,Acier
+ROSE_METAL,Rose steel,Рожева сталь,Różowa stal,Roséstahl,Acero rosa,Acier rosé
+GOLD_METAL,Gold steel,Золота сталь,Złota stal,Goldstahl,Acero dorado,Acier doré
+WORKSHOP,Classic workshop,Класична майстерня,Klasyczna pracownia,Klassische Werkstatt,Taller clásico,Atelier classique
+MIDNIGHT,Midnight,Опівніч,Północ,Mitternacht,Medianoche,Minuit
+SUNSET,Sunset,Захід сонця,Zachód słońca,Abendrot,Atardecer,Coucher de soleil
+CLAY_DUST,Clay crumbs,Крихти пластиліну,Okruchy plasteliny,Knetekrümel,Migas de arcilla,Miettes de pâte
+STAR_DUST,Stardust,Зоряний пил,Gwiezdny pył,Sternenstaub,Polvo estelar,Poussière d’étoiles
+AURORA_DUST,Aurora,Сяйво,Zorza,Polarlicht,Aurora,Aurore
+DAILY_BEST,Today’s best,Рекорд дня,Najlepszy dzisiaj,Tagesbestwert,Récord de hoy,Record du jour
+ASSISTED_BEST,Assisted best,Рекорд з продовженням,Rekord z pomocą,Bestwert mit Hilfe,Récord asistido,Record assisté
+CELLS_TOTAL,Cells cut,Вирізано клітинок,Wycięte pola,Geschnittene Felder,Casillas cortadas,Cases découpées
+LINES_TOTAL,Lines refilled,Відновлено рядів,Uzupełnione linie,Aufgefüllte Reihen,Líneas restauradas,Lignes remplies
+GAMES_TOTAL,Games finished,Завершено ігор,Ukończone gry,Beendete Partien,Partidas terminadas,Parties terminées
+MAX_COMBO,Biggest streak,Найдовша серія,Najdłuższa seria,Längste Serie,Mayor racha,Plus longue série
+ACHIEVEMENTS,Achievements,Досягнення,Osiągnięcia,Erfolge,Logros,Succès
+FIRST_LINES,Line maker,Майстер рядів,Mistrz linii,Reihenprofi,Maestro de líneas,Maître des lignes
+COMBO_ARTIST,Combo artist,Митець комбо,Artysta kombo,Kombi-Künstler,Artista del combo,Artiste du combo
+SCULPTOR,Sculptor,Скульптор,Rzeźbiarz,Bildhauer,Escultor,Sculpteur
+WORKSHOP_VETERAN,Workshop veteran,Ветеран майстерні,Weteran pracowni,Werkstattveteran,Veterano del taller,Vétéran de l’atelier
+HISTORY,Recent games,Останні ігри,Ostatnie gry,Letzte Partien,Partidas recientes,Parties récentes
+NO_HISTORY,Finish a game to see it here.,"Завершіть гру, щоб вона з’явилася тут.","Ukończ grę, by ją tu zobaczyć.","Beende eine Partie, um sie hier zu sehen.",Termina una partida para verla aquí.,Termine une partie pour la voir ici.
+MUSIC,Music,Музика,Muzyka,Musik,Música,Musique
+SOUND,Sound effects,Звукові ефекти,Efekty dźwiękowe,Soundeffekte,Efectos de sonido,Effets sonores
+HAPTICS,Vibration,Вібрація,Wibracje,Vibration,Vibración,Vibrations
+QUALITY,Effects quality,Якість ефектів,Jakość efektów,Effektqualität,Calidad de efectos,Qualité des effets
+HIGH,High,Висока,Wysoka,Hoch,Alta,Haute
+REDUCED,Reduced,Знижена,Ograniczona,Reduziert,Reducida,Réduite
+LANGUAGE,Language,Мова,Język,Sprache,Idioma,Langue
+AUTOMATIC,Automatic,Автоматично,Automatyczny,Automatisch,Automático,Automatique
+ON,On,Увімкнено,Wł.,An,Sí,Activé
+OFF,Off,Вимкнено,Wył.,Aus,No,Désactivé
+CREDIT,Developed by LemvoriLab,Розробка LemvoriLab,Stworzone przez LemvoriLab,Entwickelt von LemvoriLab,Desarrollado por LemvoriLab,Développé par LemvoriLab

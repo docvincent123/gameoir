@@ -1,0 +1,48 @@
+class_name ThemeCatalog
+extends RefCounted
+
+const MATERIALS := [
+	[&"SKIN_CLASSIC", 0],
+	[&"SKIN_RAINBOW", 5000],
+	[&"SKIN_GALAXY", 20000],
+	[&"SKIN_GOLDEN", 50000],
+	[&"SKIN_MARBLE", 100000],
+	[&"SKIN_CANDY", 1000],
+	[&"SKIN_NEON", 3000],
+	[&"SKIN_WATERMELON", 8000],
+	[&"SKIN_COOKIE", 12000],
+	[&"SKIN_CRYSTAL", 25000],
+	[&"SKIN_LAVA", 35000],
+	[&"SKIN_ICE", 75000],
+]
+const CUTTERS := [
+	[&"STEEL", 0, Color.WHITE],
+	[&"ROSE_METAL", 40, Color("#ffb7cc")],
+	[&"GOLD_METAL", 120, Color("#ffcf74")],
+]
+const STYLES := [
+	[&"WORKSHOP", 0, Color("#4b2762")],
+	[&"MIDNIGHT", 200, Color("#22284e")],
+	[&"SUNSET", 600, Color("#592b47")],
+]
+const EFFECTS := [
+	[&"CLAY_DUST", 0, Color.WHITE],
+	[&"STAR_DUST", 15, Color("#ffd572")],
+	[&"AURORA_DUST", 65, Color("#a0fff5")],
+]
+const ACHIEVEMENTS := [
+	[&"FIRST_LINES", "lines", 10],
+	[&"COMBO_ARTIST", "combo", 5],
+	[&"SCULPTOR", "cells", 500],
+	[&"WORKSHOP_VETERAN", "games", 20],
+]
+
+static func active_material(run: GameManager, save: SaveManager) -> int:
+	var choice := int(save.setting("material", -1))
+	if choice >= 0 and choice < MATERIALS.size() and save.best() >= MATERIALS[choice][1]:
+		return choice
+	return DifficultyManager.MATERIALS[run.tier()]
+
+static func unlocked_choice(save: SaveManager, key: String, options: Array, tally: int) -> int:
+	var choice := clampi(int(save.setting(key, 0)), 0, options.size() - 1)
+	return choice if tally >= options[choice][1] else 0
