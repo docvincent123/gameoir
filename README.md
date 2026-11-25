@@ -63,3 +63,6 @@ New vector brand emblem, factory illustration, layered jade/gold HUD, cream/gold
 
 ## 2.0.2 text rendering hotfix
 Use grayscale rasterized Manrope rather than MSDF, supported font weights, linear canvas filtering, bounded font sizing on both axes, and simple text shadows instead of overlapping outlines. Small HUD chips no longer use nine-slice margins larger than their height. On an existing checkout close Godot, remove only the project's `.godot` import cache, then reopen `project.godot`. Saved games are stored separately in `user://`.
+
+## 2.1 Soft Pop visual redesign
+Replaces the gold workshop look with lavender, matte clay, a recessed purple board, a large unboxed score, softer controls, fresh hero artwork and compact navigation. Existing game rules, cosmetics, safe-area mapping, progress, saves and input regions remain intact. The 2.0.2 font compatibility fix remains. Visual device verification is still required.
