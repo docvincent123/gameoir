@@ -19,7 +19,7 @@ CONTINUE,Continue once,Ще один шанс,Jeszcze jedna szansa,Einmal fortse
 ASSISTED,Assisted run,Гра з продовженням,Gra z pomocą,Partie mit Hilfe,Partida asistida,Partie assistée
 ASSISTED_NOTE,Refill the board and keep your score in the assisted records.,Відновіть поле та збережіть рахунок у рекордах ігор з продовженням.,Odnów planszę i zachowaj wynik w rekordach z pomocą.,Fülle das Feld auf und speichere den Punktestand bei den Rekorden mit Hilfe.,Rellena el tablero y guarda tu puntuación en récords asistidos.,Remplis le plateau et garde ton score dans les records assistés.
 DRAG_HINT,Drag a cutter onto the clay,Перетягніть формочку на пластилін,Przeciągnij foremkę na plastelinę,Ziehe eine Form auf die Knete,Arrastra un molde a la arcilla,Glisse un emporte-pièce sur la pâte
-REFILL_HINT,Cut a full row or column to refill it.,"Виріжте цілий ряд або стовпець, щоб відновити його.","Wytnij cały wiersz lub kolumnę, aby je uzupełnić.","Schneide eine ganze Zeile oder Spalte aus, damit sie sich füllt.",Corta una fila o columna entera para rellenarla.,Découpe une ligne ou une colonne entière pour la remplir.
+REFILL_HINT,Clear a line to start its refill countdown.,"Виріжте лінію, щоб почався відлік до відновлення.","Wytnij linię, aby rozpocząć odliczanie.","Schneide eine Linie aus, um den Countdown zu starten.",Corta una línea para iniciar la cuenta atrás.,Découpe une ligne pour lancer son compte à rebours.
 CUTTERS,Cutters,Формочки,Foremki,Formen,Moldes,Emporte-pièces
 MATERIALS,Clay,Пластилін,Plastelina,Knete,Arcilla,Pâte
 STYLES,Workshop,Майстерня,Pracownia,Werkstatt,Taller,Atelier
@@ -66,7 +66,7 @@ AURORA_DUST,Aurora,Сяйво,Zorza,Polarlicht,Aurora,Aurore
 DAILY_BEST,Today’s best,Рекорд дня,Najlepszy dzisiaj,Tagesbestwert,Récord de hoy,Record du jour
 ASSISTED_BEST,Assisted best,Рекорд з продовженням,Rekord z pomocą,Bestwert mit Hilfe,Récord asistido,Record assisté
 CELLS_TOTAL,Cells cut,Вирізано клітинок,Wycięte pola,Geschnittene Felder,Casillas cortadas,Cases découpées
-LINES_TOTAL,Lines refilled,Відновлено рядів,Uzupełnione linie,Aufgefüllte Reihen,Líneas restauradas,Lignes remplies
+LINES_TOTAL,Lines cleared,Вирізано ліній,Wycięte linie,Geschnittene Reihen,Líneas cortadas,Lignes découpées
 GAMES_TOTAL,Games finished,Завершено ігор,Ukończone gry,Beendete Partien,Partidas terminadas,Parties terminées
 MAX_COMBO,Biggest streak,Найдовша серія,Najdłuższa seria,Längste Serie,Mayor racha,Plus longue série
 ACHIEVEMENTS,Achievements,Досягнення,Osiągnięcia,Erfolge,Logros,Succès
@@ -87,3 +87,13 @@ AUTOMATIC,Automatic,Автоматично,Automatyczny,Automatisch,Automático,
 ON,On,Увімкнено,Wł.,An,Sí,Activé
 OFF,Off,Вимкнено,Wył.,Aus,No,Désactivé
 CREDIT,Developed by LemvoriLab,Розробка LemvoriLab,Stworzone przez LemvoriLab,Entwickelt von LemvoriLab,Desarrollado por LemvoriLab,Développé par LemvoriLab
+REFILL_IN,Refill in %s turns,Відновлення за %s ходи,Uzupełnienie za %s tury,Füllung in %s Zügen,Relleno en %s turnos,Remplissage dans %s tours
+REFILL_DELAY,Refill delay  ·  %s,Ходів до відновлення  ·  %s,Opóźnienie  ·  %s,Füllzeit  ·  %s,Demora del relleno  ·  %s,Délai de remplissage  ·  %s
+LINE_QUEUED,Line ready,Лінія в черзі,Linia w kolejce,Linie vorgemerkt,Línea en cola,Ligne en attente
+MULTI_QUEUED,%s lines queued,Ліній у черзі: %s,%s linie w kolejce,%s Linien vorgemerkt,%s líneas en cola,%s lignes en attente
+WAIT_TURN,Wait 1 turn,Зачекати 1 хід,Poczekaj 1 turę,1 Zug warten,Espera 1 turno,Attendre 1 tour
+SKIN_MINT,Mint,М’ята,Mięta,Minze,Menta,Menthe
+SKIN_CONFETTI,Confetti,Конфеті,Konfetti,Konfetti,Confeti,Confettis
+SKIN_WAFFLE,Waffle,Вафля,Wafel,Waffel,Gofre,Gaufre
+SKIN_AURORA,Aurora,Полярне сяйво,Zorza,Polarlicht,Aurora,Aurore
+REFILL_NEXT,Refill next turn,Відновлення за 1 хід,Uzupełnienie za 1 turę,Füllung in 1 Zug,Relleno en 1 turno,Remplissage dans 1 tour

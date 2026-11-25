@@ -29,6 +29,10 @@ PALETTES = [
     ((62, 225, 209), (17, 108, 130)),
     ((252, 141, 40), (161, 32, 36)),
     ((147, 220, 250), (37, 107, 201)),
+    ((130, 241, 179), (23, 122, 109)),
+    ((246, 195, 235), (172, 95, 166)),
+    ((243, 170, 87), (140, 65, 31)),
+    ((137, 146, 245), (44, 34, 140)),
 ]
 
 
@@ -60,6 +64,22 @@ def clay(material, variation, mode="tile"):
     height += .087 * (1 - np.clip(np.hypot(xx - .36, yy - .26), 0, 1))
     groove = np.sin(xx * 7.2 + yy * 9.0 + variation * 2.5 + .57 * smear)
     height += .027 * smear + .012 * groove + .0050 * roll + .0009 * fine
+    if mode == "tile":
+        polar_x, polar_y = xx - .55, (yy - .49) * 1.17
+        distance_from_center = np.hypot(polar_x, polar_y)
+        theta = np.arctan2(polar_y, polar_x)
+        if variation == 1:
+            height -= .028 * np.sin(distance_from_center * 65 + theta * 1.5) * np.exp(-7 * distance_from_center)
+        if variation == 2:
+            height += .020 * np.sin(xx * 18 + yy * 13 + smear * .5) * np.exp(-3 * distance_from_center)
+        if variation == 3:
+            height -= .044 * np.exp(-((xx - .42) ** 2 * 28 + (yy - .43) ** 2 * 42))
+        if variation == 4:
+            height += .020 * np.cos(yy * 16 - xx * 13 + theta * .3)
+        if variation == 5:
+            height -= .016 * np.cos(distance_from_center * 70) * np.exp(-4 * distance_from_center)
+        if variation == 6:
+            height += .024 * np.sin(xx * 12 + yy * 11) * np.sin(yy * 14 - xx * 8)
     dy, dx = np.gradient(height * 12)
     shade = np.clip(.78 * dx + dy, -.42, .45) + .026 * roll + .018 * fine
     shade += .25 * np.exp(-np.hypot((xx - .30) * 1.2, (yy - .22) * 2.3) * 3.8)
@@ -106,6 +126,22 @@ def clay(material, variation, mode="tile"):
         veins = np.clip(abs(np.sin((xx + yy + .14 * smear) * 7)) ** 22 * .61, 0, 1)
         color = color * (1 - veins[..., None]) + np.array([.37, .065, .13]) * veins[..., None]
 
+    if material in (12, 15):
+        swirl = .5 + .5 * np.sin((xx * .95 - yy + smear * .11) * 12)
+        blend = (swirl[..., None] ** 2.6) * .78
+        tint = np.array([.89, 1, .82] if material == 12 else [.15, .91, .77])
+        color = color * (1 - blend) + tint * blend
+    if material == 13:
+        for _ in range(17):
+            sx, sy = rng.uniform(.12, .88, 2)
+            dot = np.clip((.038 - np.hypot(xx - sx, (yy - sy) * 1.1)) * 93, 0, 1)
+            tint = np.array([[.44, .47, .94], [.99, .72, .34], [.35, .78, .75], [.96, .30, .58]])[rng.integers(0, 4)]
+            color = color * (1 - dot[..., None]) + dot[..., None] * tint
+    if material == 14:
+        grille = (.5 + .5 * np.cos(xx * 31 + yy * 18)) * (.5 + .5 * np.cos(yy * 31 - xx * 18))
+        color *= 1.0 - .29 * (grille[..., None] ** 2.5)
+    if variation in (1, 3, 5) and mode == "tile":
+        color += .022 * ((variation % 3) - 1)
     bevel = np.exp(-((distance - .026) * 57) ** 2)
     glint = bevel * np.maximum(0, (.69 - yy) + (.46 - xx) * .3)
     color = color * (1 + shade[..., None]) + .11 * glint[..., None]
@@ -121,10 +157,10 @@ def clay(material, variation, mode="tile"):
 
 
 def make_clay():
-    atlas = Image.new("RGBA", (S * 6, S * len(PALETTES)))
+    modes = ["tile"] * 7 + ["pressed", "cavity", "crumb"]
+    atlas = Image.new("RGBA", (S * len(modes), S * len(PALETTES)))
     for material in range(len(PALETTES)):
-        for x in range(6):
-            mode = ["tile", "tile", "tile", "pressed", "cavity", "crumb"][x]
+        for x, mode in enumerate(modes):
             atlas.paste(clay(material, x, mode), (x * S, material * S))
     atlas.save(ROOT / "assets/clay/materials.png", optimize=True)
 
@@ -144,7 +180,7 @@ def cutters():
             shape = [(-y, x) for x, y in shape]
 
     size = 256
-    cols = 7
+    cols = 8
     atlas = Image.new("RGBA", (cols * size, math.ceil(len(shapes) / cols) * size))
     catalog = {}
     for i, (key, shape) in enumerate(shapes.items()):

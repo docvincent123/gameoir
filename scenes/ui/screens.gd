@@ -2,6 +2,7 @@ extends Node2D
 
 const TABS := ["MATERIALS", "CUTTERS", "STYLES", "EFFECTS"]
 const HISTORY_PAGE_SIZE := 5
+const SETTINGS_ICONS := [&"sound", &"sound", &"flag", &"shine", &"settings"]
 
 func render(app) -> void:
 	match app.view:
@@ -51,18 +52,20 @@ func materials(app) -> void:
 	app.button("theme_auto", Rect2(66, 348, 948, 95), tr("AUTO_THEME"), selected < 0, true)
 	for skin in ThemeCatalog.MATERIALS.size():
 		var item: Array = ThemeCatalog.MATERIALS[skin]
-		var col := skin % 3
-		var row := floori(float(skin) / 3.0)
-		var card := Rect2(66 + 320 * col, 484 + 325 * row, 308, 282)
+		var col := skin % 4
+		var row := floori(float(skin) / 4.0)
+		var card := Rect2(53 + 246 * col, 484 + 325 * row, 236, 282)
 		var unlocked: bool = app.save.best() >= int(item[1])
 		app.button("skin_%d" % skin, card, "", selected == skin, false, not unlocked)
-		app.art.cell(app, Rect2(card.position + Vector2(79, 25), Vector2(150, 150)), skin, 0,
+		app.art.cell(app, Rect2(card.position + Vector2(54, 29), Vector2(128, 128)), skin, 0,
 			Color.WHITE if unlocked else Color(0.77, 0.70, 0.79, 0.61))
-		app.ink(tr(item[0]), Rect2(card.position + Vector2(14, 180), Vector2(280, 46)), 35)
+		app.ink(tr(item[0]), Rect2(card.position + Vector2(12, 169), Vector2(212, 47)), 33)
 		var status := tr("SELECTED") if selected == skin else ""
 		if not unlocked:
 			status = tr("UNLOCK_BEST") % app.group_int(item[1])
-		app.ink(status, Rect2(card.position + Vector2(14, 228), Vector2(280, 34)), 24, app.GILT if unlocked else app.SOFT)
+		app.ink(status, Rect2(card.position + Vector2(12, 220), Vector2(212, 40)), 23, app.GILT if unlocked else app.SOFT)
+		if selected == skin:
+			app.art.icon(app, &"check", card.position + Vector2(200, 36), 37.0, app.GILT)
 
 func records(app) -> void:
 	app.refresh_day()
@@ -71,14 +74,14 @@ func records(app) -> void:
 	var scores: Array[int] = [app.save.best(), app.save.best(GameManager.DAILY, app.day), app.save.best(GameManager.ENDLESS, "", true)]
 	for i in keys.size():
 		var card := Rect2(56 + 328 * i, 228, 312, 174)
-		app.panel(card, app.CARD, 30, app.CARD_EDGE, 2)
+		app.card(card, i == 0)
 		app.ink(tr(keys[i]), Rect2(card.position + Vector2(16, 19), Vector2(280, 49)), 30, app.SOFT)
 		app.ink(app.group_int(scores[i]), Rect2(card.position + Vector2(16, 75), Vector2(280, 76)), 54, app.GILT)
 	var stats := [["CELLS_TOTAL", "cells"], ["LINES_TOTAL", "lines"], ["MAX_COMBO", "combo"], ["GAMES_TOTAL", "games"]]
 	for i in stats.size():
 		var stat: Array = stats[i]
 		var card := Rect2(56 + 493 * (i % 2), 435 + 112 * floori(float(i) / 2.0), 475, 97)
-		app.panel(card, app.CARD, 26, app.CARD_EDGE)
+		app.card(card)
 		app.ink(tr(stat[0]), Rect2(card.position + Vector2(23, 9), Vector2(273, 79)), 28,
 			app.SOFT, HORIZONTAL_ALIGNMENT_LEFT)
 		app.ink(app.group_int(app.save.stat(stat[1])), Rect2(card.position + Vector2(305, 9), Vector2(146, 79)),
@@ -90,8 +93,8 @@ func records(app) -> void:
 		var card := Rect2(56 + 493 * (i % 2), 780 + 114 * floori(float(i) / 2.0), 475, 96)
 		var progress := mini(app.save.stat(achievement[1]), int(achievement[2]))
 		var done := progress >= int(achievement[2])
-		app.panel(card, app.CARD, 24, app.GILT.darkened(0.36) if done else app.CARD_EDGE)
-		app.art.sparkle(app, card.position + Vector2(49, 48), 22, app.GILT if done else app.MUTED)
+		app.card(card, done)
+		app.art.icon(app, &"star", card.position + Vector2(49, 48), 49.0, Color.WHITE if done else Color("#936a89"))
 		app.ink(tr(achievement[0]), Rect2(card.position + Vector2(88, 13), Vector2(355, 36)), 29,
 			app.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 		app.ink("%s / %s" % [app.group_int(progress), app.group_int(achievement[2])],
@@ -112,7 +115,7 @@ func records(app) -> void:
 			mode = "%s  ·  %s" % [tr("DAILY"), entry.day]
 		elif entry.assisted:
 			mode = tr("ASSISTED")
-		app.panel(row, app.CARD, 23, app.CARD_EDGE)
+		app.card(row)
 		app.ink(mode, Rect2(row.position + Vector2(29, 8), Vector2(642, 76)), 30,
 			app.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 		app.ink(app.group_int(entry.score), Rect2(row.position + Vector2(694, 8), Vector2(241, 76)),
@@ -129,8 +132,9 @@ func settings(app) -> void:
 	for i in choices.size():
 		var option: Array = choices[i]
 		var row := Rect2(58, 254 + 181 * i, 964, 143)
-		app.panel(row, app.CARD, 35, app.CARD_EDGE, 2)
-		app.ink(tr(option[0]), Rect2(row.position + Vector2(32, 20), Vector2(465, 103)), 43,
+		app.card(row)
+		app.art.icon(app, SETTINGS_ICONS[i], row.position + Vector2(52, 71), 64, app.GILT)
+		app.ink(tr(option[0]), Rect2(row.position + Vector2(103, 20), Vector2(395, 103)), 43,
 			app.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 		var text := ""
 		var active := false

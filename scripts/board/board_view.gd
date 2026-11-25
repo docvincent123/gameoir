@@ -5,17 +5,18 @@ const TRACK := Color("#2b1543")
 const GILT := Color("#ffe0a0")
 const VALID := Color("#afffcd")
 const INVALID := Color("#ff7f9c")
+const TILE_TINTS := [Color.WHITE, Color("#f3ddff"), Color("#fdcdf6"),
+	Color("#e4d6ff"), Color("#fbe5fc"), Color("#e5d7fc"), Color("#f6d9ff")]
 
 func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, material: int,
-		animation: AnimationManager, input: InputManager, metal: Color, over: float, reduced: bool, workshop: Color) -> void:
+		animation: AnimationManager, input: InputManager, metal: Color, over: float, reduced: bool, workshop: Color, numbers: Font) -> void:
 	var unit := frame.size.x / BoardManager.SIZE
 	var board := frame
 	board.position += animation.displace(run.streak, reduced)
-	var frame_color := workshop.lerp(Color("#251139"), 0.36)
-	art.panel(canvas, shift(board.grow(34), Vector2(0, 12)), Color(0.065, 0.02, 0.10, 0.57), 68)
-	art.panel(canvas, board.grow(31), frame_color, 65, workshop.lightened(0.23), 3)
-	art.panel(canvas, board.grow(11), TRACK.darkened(0.32), 44)
-	art.panel(canvas, board.grow(3), TRACK, 39, Color("#331950"), 3)
+	var frame_tint := workshop.lerp(Color.WHITE, 0.81).darkened(over * 0.30)
+	art.panel(canvas, shift(board.grow(49), Vector2(0, 11)), Color(0.065, 0.02, 0.10, 0.67), 48)
+	art.panel(canvas, board.grow(13), TRACK.darkened(0.47), 29)
+	canvas.draw_texture_rect(ClayArt.FRAME, board.grow(49), false, frame_tint)
 
 	var preview := run.cutters.shape(input.slot)
 	for y in BoardManager.SIZE:
@@ -24,25 +25,32 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, ma
 			var cell := Rect2(board.position + Vector2(tile) * unit, Vector2.ONE * unit)
 			var occupied := run.board.filled(tile)
 			var state := animation.cell_state(tile, occupied, input, preview)
-			var pattern := (x * 11 + y * 13 + x * y) % 3
+			var pattern := (x * 11 + y * 13 + x * y) % ClayArt.VARIANTS
 			var regular := 1.012
-			var warm := Color.WHITE.darkened(over * 0.48)
+			var warm: Color = TILE_TINTS[pattern].darkened(over * 0.48)
+			var queued := run.board.pending[y] > 0 or run.board.pending[BoardManager.SIZE + x] > 0
 			if state == ClayCell.State.CUTTING:
 				var progress := clampf(animation.elapsed / AnimationManager.PRESS, 0.0, 1.0)
-				var squish := centered(cell, Vector2(1.035, 1.035 - 0.13 * sin(progress * PI)))
-				art.cell(canvas, squish, animation.material, 3)
+				var wobble := sin(progress * PI)
+				var squish := centered(cell, Vector2(1.035 + wobble * 0.035, 1.035 - wobble * (0.10 + (pattern % 3) * 0.02)))
+				art.cell(canvas, squish, animation.material, ClayArt.PRESSED)
 				art.panel(canvas, cell.grow(-6.0), Color.TRANSPARENT, 18, Color(GILT, progress * 0.72), 4)
 			elif state == ClayCell.State.REFILLING:
-				art.cell(canvas, centered(cell, Vector2.ONE), material, 4)
+				art.cell(canvas, cell, material, ClayArt.CAVITY)
 				var wave := line_offset(animation.change, tile) * 0.015
 				var progress := clampf((animation.elapsed - AnimationManager.REFILL - wave) / 0.29, 0.0, 1.0)
 				if progress > 0.0:
 					var bounce := ease(progress, -1.65)
-					var swell := centered(cell, Vector2.ONE * lerpf(0.24, 1.012, bounce) + Vector2(0.04, -0.015) * sin(progress * PI))
-					art.cell(canvas, swell, material, pattern, Color.WHITE.lerp(GILT, (1.0 - progress) * 0.54))
+					var pulse := sin(progress * PI)
+					var stretch := Vector2(0.08, -0.035) if pattern % 2 == 0 else Vector2(-0.05, 0.085)
+					var swell := centered(cell, Vector2.ONE * lerpf(0.24, 1.012, bounce) + stretch * pulse)
+					art.cell(canvas, swell, material, pattern, warm.lerp(GILT, (1.0 - progress) * 0.54))
 					art.panel(canvas, cell.grow(-3.0), Color.TRANSPARENT, 21, Color(GILT, sin(progress * PI) * 0.72), 3)
 			else:
-				art.cell(canvas, centered(cell, Vector2.ONE * regular), material, pattern if occupied else 4, warm)
+				var tint := warm.lerp(Color("#f7a8ff"), 0.56) if queued and not occupied else warm
+				art.cell(canvas, centered(cell, Vector2.ONE * regular), material, pattern if occupied else ClayArt.CAVITY, tint)
+				if queued and not occupied:
+					art.panel(canvas, cell.grow(-9), Color("#ffd891", 0.05), 23, Color("#ebb67e", 0.37), 2)
 				if state == ClayCell.State.VALID_PREVIEW or state == ClayCell.State.INVALID_PREVIEW:
 					var cue := VALID if input.valid else INVALID
 					art.panel(canvas, cell.grow(-5.5), Color(cue, 0.29), 23, cue, 4)
@@ -51,6 +59,42 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, ma
 
 	if animation.active:
 		stamp(canvas, art, board, unit, animation, metal)
+		if not reduced:
+			refill_trails(canvas, art, board, unit, animation)
+	draw_queue(canvas, art, run.board, board, unit, numbers)
+
+func draw_queue(canvas: CanvasItem, art: ClayArt, grid: BoardManager, area: Rect2, unit: float, numbers: Font) -> void:
+	for line in BoardManager.LINE_COUNT:
+		var remaining := grid.pending[line]
+		if remaining == 0:
+			continue
+		var row := line < BoardManager.SIZE
+		var offset := (float(line % BoardManager.SIZE) + 0.5) * unit
+		var center := Vector2(area.end.x + 25, area.position.y + offset) if row else Vector2(area.position.x + offset, area.end.y + 25)
+		var badge := Rect2(center - Vector2(22, 20), Vector2(44, 40))
+		var texture: Texture2D = ClayArt.SURFACES[&"amber"] if remaining == 1 else ClayArt.SURFACES[&"plum"]
+		canvas.draw_texture_rect(texture, badge, false)
+		var tint := Color("#28112d") if remaining == 1 else GILT
+		var baseline := center.y + (numbers.get_ascent(25) - numbers.get_descent(25)) / 2
+		canvas.draw_string(numbers, Vector2(badge.position.x, baseline), str(remaining),
+			HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, 25, tint)
+
+func refill_trails(canvas: CanvasItem, art: ClayArt, area: Rect2, unit: float, animation: AnimationManager) -> void:
+	if animation.elapsed < AnimationManager.REFILL:
+		return
+	var progress := clampf((animation.elapsed - AnimationManager.REFILL) / 0.34, 0.0, 1.0)
+	var glow := sin(progress * PI)
+	for line: int in animation.change.refilled:
+		var first := area.position + (Vector2(BoardManager.line_cell(line, 0)) + Vector2.ONE * 0.5) * unit
+		var last := area.position + (Vector2(BoardManager.line_cell(line, BoardManager.SIZE - 1)) + Vector2.ONE * 0.5) * unit
+		if line % 2 == 1:
+			var opposite := first
+			first = last
+			last = opposite
+		var movement := first.lerp(last, progress)
+		var trail := first.lerp(last, maxf(0, progress - 0.31))
+		canvas.draw_line(trail, movement, Color(GILT, glow * 0.55), 5.0, true)
+		art.icon(canvas, &"shine", movement, 40.0 + 23.0 * glow, Color(GILT, glow))
 
 func stamp(canvas: CanvasItem, art: ClayArt, board: Rect2, unit: float, animation: AnimationManager, metal: Color) -> void:
 	var elapsed := animation.elapsed
@@ -64,16 +108,23 @@ func stamp(canvas: CanvasItem, art: ClayArt, board: Rect2, unit: float, animatio
 		var opacity := 1.0 - smoothstep(0.48, 1.0, pop)
 		for tile: Vector2i in animation.change.removed:
 			var cell := Rect2(board.position + Vector2(tile) * unit, Vector2.ONE * unit)
-			var raised := centered(cell, Vector2(1.0 + tension * 0.055, 1.0 + tension * 0.19))
+			var style := (tile.x + tile.y * 2) % 3
+			var flight := Vector2((style - 1) * 25, -35 - style * 12) * tension
+			var raised := centered(cell, Vector2(1.0 + tension * (0.05 + style * 0.031), 1.0 + tension * (0.22 - style * 0.08)))
 			art.panel(canvas, shift(raised.grow(-8), Vector2(0, 8)), Color(0.10, 0.02, 0.16, opacity * 0.48), 25)
-			art.cell(canvas, shift(raised, Vector2(0, -36 * tension)), animation.material, 3, Color(1.0, 0.99, 0.97, opacity))
+			art.cell(canvas, shift(raised, flight), animation.material, ClayArt.PRESSED, Color(1.0, 0.99, 0.97, opacity))
 
 func line_offset(change: Dictionary, tile: Vector2i) -> int:
-	var row: bool = tile.y in change.rows
-	var column: bool = tile.x in change.columns
-	if row and column:
-		return mini(tile.x, tile.y)
-	return tile.x if row else tile.y
+	var offset := BoardManager.SIZE
+	for line: int in change.refilled:
+		var row := line < BoardManager.SIZE
+		if line % BoardManager.SIZE != (tile.y if row else tile.x):
+			continue
+		var position := tile.x if row else tile.y
+		if line % 2 == 1:
+			position = BoardManager.SIZE - 1 - position
+		offset = mini(offset, position)
+	return offset
 
 func centered(area: Rect2, stretch: Vector2) -> Rect2:
 	var dimensions := area.size * stretch

@@ -57,7 +57,7 @@ func render(canvas: CanvasItem, art: ClayArt) -> void:
 		if particle.star:
 			art.sparkle(canvas, particle.position, radius, color, (1.0 - ratio) * particle.spin)
 		else:
-			art.cell(canvas, Rect2(particle.position - Vector2.ONE * radius, Vector2.ONE * radius * 2), particle.skin, 5, color)
+			art.cell(canvas, Rect2(particle.position - Vector2.ONE * radius, Vector2.ONE * radius * 2), particle.skin, ClayArt.CRUMB, color)
 
 func clear() -> void:
 	for particle in particles:

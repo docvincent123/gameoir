@@ -1,10 +1,12 @@
 class_name BoardManager
 extends RefCounted
 
-const SIZE := 8
+const SIZE := 7
 const COUNT := SIZE * SIZE
+const LINE_COUNT := SIZE * 2
 
 var cells := PackedByteArray()
+var pending := PackedInt32Array()
 
 func _init() -> void:
 	reset()
@@ -12,6 +14,8 @@ func _init() -> void:
 func reset() -> void:
 	cells.resize(COUNT)
 	cells.fill(1)
+	pending.resize(LINE_COUNT)
+	pending.fill(0)
 
 func is_inside(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.y >= 0 and cell.x < SIZE and cell.y < SIZE
@@ -46,26 +50,54 @@ func cut(shape: Array, origin: Vector2i) -> Dictionary:
 		cells[index(cell)] = 0
 		removed.append(cell)
 
-	var rows: Array[int] = []
-	var columns: Array[int] = []
-	for line in SIZE:
-		var row_empty := true
-		var column_empty := true
-		for i in SIZE:
-			row_empty = row_empty and cells[index(Vector2i(i, line))] == 0
-			column_empty = column_empty and cells[index(Vector2i(line, i))] == 0
-		if row_empty:
-			rows.append(line)
-		if column_empty:
-			columns.append(line)
+	return {"removed": removed, "completed": empty_lines(), "full": cells.count(0) == COUNT}
 
-	var full_board := rows.size() == SIZE
+static func line_cell(line: int, offset: int) -> Vector2i:
+	return Vector2i(offset, line) if line < SIZE else Vector2i(line - SIZE, offset)
+
+func empty_lines() -> Array[int]:
+	var completed: Array[int] = []
+	for line in LINE_COUNT:
+		if pending[line] > 0:
+			continue
+		var empty := true
+		for offset in SIZE:
+			if filled(line_cell(line, offset)):
+				empty = false
+				break
+		if empty:
+			completed.append(line)
+	return completed
+
+func has_pending() -> bool:
+	return soonest() > 0
+
+func soonest() -> int:
+	var next := 0
+	for remaining in pending:
+		if remaining > 0 and (next == 0 or remaining < next):
+			next = remaining
+	return next
+
+func advance(completed: Array[int], delay: int) -> Dictionary:
+	var ready: Array[int] = []
 	var refill: Array[Vector2i] = []
-	for y in SIZE:
-		for x in SIZE:
-			if y in rows or x in columns:
-				var cell := Vector2i(x, y)
-				cells[index(cell)] = 1
-				refill.append(cell)
+	for line in LINE_COUNT:
+		if pending[line] == 0:
+			continue
+		pending[line] -= 1
+		if pending[line] == 0:
+			ready.append(line)
 
-	return {"removed": removed, "rows": rows, "columns": columns, "refill": refill, "full": full_board}
+	for line in ready:
+		for offset in SIZE:
+			var target := line_cell(line, offset)
+			var position := index(target)
+			if cells[position] == 0:
+				cells[position] = 1
+				refill.append(target)
+
+	# Start newly cleared lines after ticking earlier lines so this move never counts twice.
+	for line in completed:
+		pending[line] = delay
+	return {"refill": refill, "refilled": ready}

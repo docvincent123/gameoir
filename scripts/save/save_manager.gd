@@ -1,7 +1,7 @@
 class_name SaveManager
 extends RefCounted
 
-const VERSION := 1
+const VERSION := 2
 const SAVE := "user://clay_factory.cfg"
 
 var path := SAVE
@@ -11,7 +11,10 @@ func _init(save_path: String = SAVE) -> void:
 	path = save_path
 	for candidate in [path, path + ".bak"]:
 		var loaded := ConfigFile.new()
-		if loaded.load(candidate) == OK and loaded.get_value("format", "version", -1) == VERSION:
+		if loaded.load(candidate) != OK:
+			continue
+		var version: int = loaded.get_value("format", "version", -1)
+		if version >= 1 and version <= VERSION:
 			data = loaded
 			break
 

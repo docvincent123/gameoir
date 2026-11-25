@@ -8,6 +8,7 @@ var change: Dictionary = {}
 var stamp_id := ""
 var stamp_center := Vector2.ZERO
 var stamp_unit := 0.0
+var refill_center := Vector2.ZERO
 var material := 0
 var elapsed := 1.0
 var raised := false
@@ -28,8 +29,13 @@ func start(result: Dictionary, id: String, center: Vector2, unit: float, skin: i
 func step(delta: float) -> void:
 	if active:
 		elapsed += delta
-		if elapsed >= (0.76 if change.lines > 0 else 0.52):
+		if elapsed >= duration():
 			active = false
+
+func duration() -> float:
+	if not change.refilled.is_empty():
+		return 0.76
+	return 0.17 if stamp_id.is_empty() else 0.52
 
 func displace(streak: int, reduced: bool) -> Vector2:
 	if not active or reduced or not glowing or streak < 3:

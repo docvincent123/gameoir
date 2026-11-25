@@ -14,6 +14,10 @@ const MATERIALS := [
 	[&"SKIN_CRYSTAL", 25000],
 	[&"SKIN_LAVA", 35000],
 	[&"SKIN_ICE", 75000],
+	[&"SKIN_MINT", 500],
+	[&"SKIN_CONFETTI", 1500],
+	[&"SKIN_WAFFLE", 4400],
+	[&"SKIN_AURORA", 17000],
 ]
 const CUTTERS := [
 	[&"STEEL", 0, Color.WHITE],

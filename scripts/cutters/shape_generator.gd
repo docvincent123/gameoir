@@ -36,7 +36,7 @@ static func normalize(points: Array[Vector2i]) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	for p in points:
 		result.append(p - top_left)
-	result.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y * 8 + a.x < b.y * 8 + b.x)
+	result.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y * BoardManager.SIZE + a.x < b.y * BoardManager.SIZE + b.x)
 	return result
 
 func draw_hand(board: BoardManager, tier: int) -> Array[String]:

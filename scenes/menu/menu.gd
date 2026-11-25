@@ -12,7 +12,7 @@ func render(app) -> void:
 	app.draw_arc(Vector2(540, 805), 375, 0.12, PI - 0.08, 72, Color(0.77, 0.46, 0.95, 0.12), 2.0, true)
 	app.art.sparkle(app, Vector2(168, 755 + floating), 15, Color("#d597ff"), PI / 15)
 	app.art.sparkle(app, Vector2(880, 646 - floating), 13, Color("#f4c2ff"), PI / 10)
-	app.art.sparkle(app, Vector2(844, 1006 + floating), 12, app.GILT, PI / 13)
+	app.art.icon(app, &"shine", Vector2(844, 1006 + floating), 31.0)
 	app.art.sparkle(app, Vector2(248, 1058 + floating), 9, Color("#ce84ec"))
 	var hero_w := 804.0
 	var hero_h := hero_w * float(HERO.get_height()) / float(HERO.get_width())
@@ -29,9 +29,9 @@ func render(app) -> void:
 	app.button("records", Rect2(385, 1546, 310, 99), tr("RECORDS"), false, true)
 	app.button("settings", Rect2(717, 1546, 310, 99), tr("SETTINGS"), false, true)
 	if daily:
-		app.art.sparkle(app, Vector2(917, 1432), 13, app.GILT)
+		app.art.icon(app, &"clock", Vector2(917, 1432), 32.0)
 	app.draw_line(Vector2(98, 1729), Vector2(982, 1729), Color("#593767"), 2.0, true)
-	app.art.sparkle(app, Vector2(438, 1784), 17, app.GILT)
+	app.art.icon(app, &"star", Vector2(432, 1784), 38.0)
 	app.ink("%s  %s" % [tr("BEST").to_upper(), app.group_int(best)],
 		Rect2(469, 1749, 464, 67), 35, app.GILT, HORIZONTAL_ALIGNMENT_LEFT)
 	app.ink(tr("CREDIT"), Rect2(100, 1840, 880, 41), 24, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
