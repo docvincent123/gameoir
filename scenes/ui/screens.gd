@@ -3,7 +3,8 @@ extends Node2D
 const TABS := ["MATERIALS", "CUTTERS", "STYLES", "EFFECTS"]
 const HISTORY_PAGE_SIZE := 5
 const SHAPE_PAGE_SIZE := 16
-const GALLERY_CLAYS := ThemeCatalog.WARM_PALETTE + ThemeCatalog.COOL_PALETTE
+# Slab atlas slots for peach, mint, purple, gold, pink, and green previews.
+const GALLERY_CLAYS := [ThemeCatalog.STUDIO_START, ThemeCatalog.STUDIO_START + 1, 0, 3, 5, 6]
 const SETTINGS_ICONS := [&"music", &"sound", &"haptics", &"sliders", &"globe"]
 
 var preview_index := -1
