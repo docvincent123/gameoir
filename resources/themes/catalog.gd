@@ -1,6 +1,15 @@
 class_name ThemeCatalog
 extends RefCounted
 
+const STUDIO_START := 16
+const PALETTES := [
+	[16, 17, 18, 19, 20, 21],
+	[16, 17, 18, 19, 21, 1],
+	[18, 21, 22, 23, 2, 16],
+	[17, 20, 23, 24, 3, 18],
+	[16, 18, 19, 21, 4, 22],
+]
+
 const MATERIALS := [
 	[&"SKIN_CLASSIC", 0],
 	[&"SKIN_RAINBOW", 5000],
@@ -25,9 +34,9 @@ const CUTTERS := [
 	[&"GOLD_METAL", 120, Color("#ffcf74")],
 ]
 const STYLES := [
-	[&"WORKSHOP", 0, Color("#4b2762")],
-	[&"MIDNIGHT", 200, Color("#22284e")],
-	[&"SUNSET", 600, Color("#592b47")],
+	[&"WORKSHOP", 0, Color("#cce9dd")],
+	[&"MIDNIGHT", 200, Color("#d9d5f4")],
+	[&"SUNSET", 600, Color("#f6d4c0")],
 ]
 const EFFECTS := [
 	[&"CLAY_DUST", 0, Color.WHITE],
@@ -41,11 +50,18 @@ const ACHIEVEMENTS := [
 	[&"WORKSHOP_VETERAN", "games", 20],
 ]
 
-static func active_material(run: GameManager, save: SaveManager) -> int:
+static func active_palette(run: GameManager, save: SaveManager) -> Array:
 	var choice := int(save.setting("material", -1))
 	if choice >= 0 and choice < MATERIALS.size() and save.best() >= MATERIALS[choice][1]:
-		return choice
-	return DifficultyManager.MATERIALS[run.tier()]
+		return [choice]
+	return PALETTES[run.tier()]
+
+static func material_at(palette: Array, cell: Vector2i) -> int:
+	var index := cell.y * BoardManager.SIZE + cell.x
+	var group := floori(float(index) / palette.size())
+	var offset := index % palette.size()
+	var order := offset if group % 2 == 0 else -offset
+	return palette[posmod(order + group * 2 + (group >> 1), palette.size())]
 
 static func unlocked_choice(save: SaveManager, key: String, options: Array, tally: int) -> int:
 	var choice := clampi(int(save.setting(key, 0)), 0, options.size() - 1)

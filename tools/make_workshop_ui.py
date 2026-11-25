@@ -11,20 +11,17 @@ from scipy.ndimage import distance_transform_edt, gaussian_filter, label
 from make_assets import rgba
 
 DESTINATION = Path(__file__).resolve().parents[1] / "assets/ui/workshop"
-BUTTONS = ["primary", "plum", "amber", "muted", "tray", "card"]
-OBJECTS = ["star", "clock", "shine"]
-GLYPHS = ["play", "calendar", "collection", "trophy", "settings", "pause", "back",
-          "home", "restart", "sound", "flag", "check", "cutter"]
+GLYPHS = ["home", "restart", "sound", "music", "haptics", "globe", "check", "cutter"]
 
 
-def isolated(image):
+def isolated(image, minimum_fraction=1.0):
     pixels = np.asarray(image.convert("RGBA")).copy()
     groups, count = label(pixels[..., 3] >= 102)
     if count == 0:
         raise ValueError("Expected a visible motif")
     areas = np.bincount(groups.ravel())
     areas[0] = 0
-    main = groups == areas.argmax()
+    main = (groups > 0) & (areas[groups] >= areas.max() * minimum_fraction)
     pixels[distance_transform_edt(~main) > 1.8] = 0
     cleaned = Image.fromarray(pixels)
     return cleaned.crop(cleaned.getbbox(alpha_only=True))
@@ -48,55 +45,76 @@ def prepare_frame(source):
     reshaped.save(DESTINATION / "board.png", optimize=True)
 
 
-def prepare_kit(source):
+def sprite_grid(source):
     montage = Image.open(source).convert("RGBA")
-    for index, name in enumerate(BUTTONS + OBJECTS):
+    for index in range(9):
         row, column = divmod(index, 3)
-        image = isolated(montage.crop((column * montage.width // 3, row * montage.height // 3,
-                                       (column + 1) * montage.width // 3, (row + 1) * montage.height // 3)))
-        if name in BUTTONS:
-            image = image.resize((224, 112), Image.Resampling.LANCZOS)
-        else:
-            image.thumbnail((132, 132), Image.Resampling.LANCZOS)
-        image.save(DESTINATION / (name + ".png"), optimize=True)
+        yield isolated(montage.crop((column * montage.width // 3, row * montage.height // 3,
+                                     (column + 1) * montage.width // 3, (row + 1) * montage.height // 3)))
+
+
+def prepare_icons(source):
+    atlas = Image.new("RGBA", (160 * 3, 160 * 3))
+    for index, sprite in enumerate(sprite_grid(source)):
+        sprite.thumbnail((146, 146), Image.Resampling.LANCZOS)
+        row, column = divmod(index, 3)
+        atlas.paste(sprite, (column * 160 + (160 - sprite.width) // 2,
+                             row * 160 + (160 - sprite.height) // 2))
+    atlas.save(DESTINATION / "icons.png", optimize=True)
+
+
+def fit(sprite, size=122):
+    image = sprite.copy()
+    image.thumbnail((size, size), Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (128, 128))
+    canvas.paste(image, ((128 - image.width) // 2, (128 - image.height) // 2))
+    return canvas
+
+
+def brightness(sprite, scale):
+    pixels = np.array(sprite)
+    pixels[..., :3] = np.uint8(np.clip(pixels[..., :3] * scale, 0, 255))
+    return Image.fromarray(pixels)
+
+
+def prepare_cubes(source):
+    atlas = Image.new("RGBA", (128 * 10, 128 * 9))
+    for row, sprite in enumerate(sprite_grid(source)):
+        face = fit(sprite)
+        for variant in range(7):
+            changed = face.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if variant % 2 else face
+            changed = changed.rotate([0, 0, 2, -2, 1, -1, 3][variant], resample=Image.Resampling.BICUBIC)
+            atlas.paste(brightness(changed, [1.0, .96, 1.02, 1.01, .97, .99, 1.04][variant]), (variant * 128, row * 128))
+        atlas.paste(brightness(face, .85), (7 * 128, row * 128))
+        crumb = sprite.resize((96, 82), Image.Resampling.LANCZOS).rotate(23, expand=True, resample=Image.Resampling.BICUBIC)
+        atlas.paste(fit(crumb, 99), (9 * 128, row * 128))
+    atlas.save(DESTINATION.parent.parent / "clay" / "studio.png", optimize=True)
+
+
+def surface(recessed=False):
+    w, h = 224, 112
+    yy, xx = np.mgrid[0:h, 0:w]
+    dx, dy = abs(xx - (w - 1) / 2) - 78, abs(yy - (h - 1) / 2) - 22
+    signed = 32 - np.hypot(np.maximum(dx, 0), np.maximum(dy, 0)) - np.minimum(np.maximum(dx, dy), 0)
+    grain = np.random.default_rng(39 if recessed else 21).normal(0, .054, (h, w))
+    rolling = gaussian_filter(grain, 5)
+    height = .73 * (1 - np.exp(-np.maximum(0, signed) * .17))
+    height += .055 * np.sin(xx * .052 + yy * .072) + .033 * np.sin(xx * .105 - yy * .037)
+    if recessed:
+        height -= .44 / (1 + np.exp(-(signed - 13) * .57))
+    slope_y, slope_x = np.gradient(height)
+    light = .93 + slope_x * .83 + slope_y * 1.72 + (1 - yy / h) * .095 + rolling * 7
+    light += np.sin(xx * .087 - yy * .105) * .017 + grain * .16
+    if recessed:
+        light -= .093 / (1 + np.exp(-(signed - 13) * .5))
+    alpha = np.clip(signed + rolling * 24 + .55, 0, 1)
+    return rgba(np.dstack([light, light * .995, light * .975]), alpha)
 
 
 def icon_mask(name):
     mask = Image.new("L", (128, 128))
     draw = ImageDraw.Draw(mask)
-    if name == "play":
-        draw.polygon([(42, 21), (106, 63), (42, 105)], fill=255)
-    elif name == "calendar":
-        draw.rounded_rectangle((22, 30, 106, 104), 15, fill=255)
-        for x in (43, 84):
-            draw.rounded_rectangle((x - 7, 19, x + 7, 47), 5, fill=255)
-        draw.rectangle((31, 53, 96, 62), fill=0)
-        for x in (43, 65, 86):
-            draw.rounded_rectangle((x - 4, 73, x + 4, 82), 2, fill=0)
-    elif name == "collection":
-        for x, y in [(28, 28), (66, 28), (28, 66), (66, 66)]:
-            draw.rounded_rectangle((x, y, x + 33, y + 33), 9, fill=255)
-    elif name == "trophy":
-        draw.rounded_rectangle((37, 22, 91, 75), 18, fill=255)
-        draw.arc((21, 32, 47, 68), 75, 270, fill=255, width=8)
-        draw.arc((80, 32, 106, 68), -90, 105, fill=255, width=8)
-        draw.rounded_rectangle((56, 65, 72, 97), 5, fill=255)
-        draw.rounded_rectangle((39, 93, 89, 105), 5, fill=255)
-    elif name == "settings":
-        teeth = []
-        for point in range(32):
-            theta = point * math.tau / 32.0
-            radius = 42 if point % 4 in (1, 2) else 33
-            teeth.append((64 + math.cos(theta) * radius, 64 + math.sin(theta) * radius))
-        draw.polygon(teeth, fill=255)
-        draw.ellipse((51, 51, 77, 77), fill=0)
-    elif name == "pause":
-        draw.rounded_rectangle((36, 23, 55, 105), 8, fill=255)
-        draw.rounded_rectangle((73, 23, 92, 105), 8, fill=255)
-    elif name == "back":
-        draw.line([(67, 33), (38, 64), (67, 95)], fill=255, width=15, joint="curve")
-        draw.rounded_rectangle((42, 57, 103, 72), 6, fill=255)
-    elif name == "home":
+    if name == "home":
         draw.polygon([(17, 61), (64, 22), (111, 61), (100, 68), (27, 68)], fill=255)
         draw.rounded_rectangle((31, 55, 97, 102), 9, fill=255)
         draw.rounded_rectangle((56, 74, 75, 105), 5, fill=0)
@@ -107,9 +125,22 @@ def icon_mask(name):
         draw.polygon([(25, 50), (42, 50), (63, 33), (63, 95), (42, 78), (25, 78)], fill=255)
         draw.arc((46, 33, 101, 95), -65, 65, fill=255, width=8)
         draw.arc((49, 47, 86, 81), -65, 65, fill=255, width=8)
-    elif name == "flag":
-        draw.rounded_rectangle((34, 23, 44, 106), 4, fill=255)
-        draw.polygon([(40, 28), (97, 28), (81, 47), (98, 66), (40, 66)], fill=255)
+    elif name == "music":
+        draw.rounded_rectangle((52, 27, 63, 88), 5, fill=255)
+        draw.rounded_rectangle((89, 18, 100, 73), 5, fill=255)
+        draw.polygon([(52, 27), (100, 18), (100, 32), (52, 42)], fill=255)
+        draw.ellipse((31, 76, 63, 100), fill=255)
+        draw.ellipse((70, 61, 100, 84), fill=255)
+    elif name == "haptics":
+        draw.rounded_rectangle((41, 21, 87, 106), 10, fill=255)
+        draw.rounded_rectangle((49, 31, 79, 88), 5, fill=0)
+        draw.ellipse((59, 92, 69, 102), fill=0)
+        draw.arc((16, 34, 55, 94), 115, 245, fill=255, width=6)
+        draw.arc((74, 34, 112, 94), -65, 65, fill=255, width=6)
+    elif name == "globe":
+        draw.ellipse((24, 24, 104, 104), outline=255, width=8)
+        draw.ellipse((47, 24, 81, 104), outline=255, width=7)
+        draw.line((25, 64, 103, 64), fill=255, width=7)
     elif name == "check":
         draw.line([(29, 65), (55, 87), (98, 43)], fill=255, width=15, joint="curve")
     elif name == "cutter":
@@ -140,11 +171,28 @@ def draw_glyphs():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--frame", type=Path)
-    parser.add_argument("--kit", type=Path)
+    parser.add_argument("--icons", type=Path)
+    parser.add_argument("--cubes", type=Path)
+    parser.add_argument("--hero", type=Path)
     options = parser.parse_args()
     DESTINATION.mkdir(parents=True, exist_ok=True)
     if options.frame:
         prepare_frame(options.frame)
-    if options.kit:
-        prepare_kit(options.kit)
+    if options.icons:
+        prepare_icons(options.icons)
+    if options.cubes:
+        prepare_cubes(options.cubes)
+    if options.hero:
+        hero = isolated(Image.open(options.hero), .003)
+        hero.thumbnail((960, 960), Image.Resampling.LANCZOS)
+        hero.save(DESTINATION.parent / "hero.png", optimize=True)
+        icon = Image.new("RGBA", (256, 256))
+        draw = ImageDraw.Draw(icon)
+        draw.rounded_rectangle((4, 4, 251, 251), 49, fill="#a5dfc4")
+        draw.rounded_rectangle((12, 12, 243, 243), 44, fill="#fff0cc")
+        hero.thumbnail((223, 221), Image.Resampling.LANCZOS)
+        icon.alpha_composite(hero, ((256 - hero.width) // 2, (256 - hero.height) // 2))
+        icon.save(DESTINATION.parent / "icon.png", optimize=True)
+    surface().save(DESTINATION / "card.png", optimize=True)
+    surface(True).save(DESTINATION / "tray.png", optimize=True)
     draw_glyphs()

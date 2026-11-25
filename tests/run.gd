@@ -23,6 +23,7 @@ func run_tests() -> void:
 	test_save()
 	test_legacy_save()
 	test_locales()
+	test_visual_palette()
 	await test_interface()
 	reset_save()
 	if failures.is_empty():
@@ -261,6 +262,25 @@ func test_locales() -> void:
 	for index in names.size():
 		LocalizationManager.apply(LocalizationManager.LANGUAGES[index + 1])
 		check(TranslationServer.translate("PLAY") == names[index], "Locale asset %d" % index)
+
+func test_visual_palette() -> void:
+	var run := GameManager.new()
+	var storage := SaveManager.new(TEST_SAVE)
+	storage.data.set_value("settings", "material", -1)
+	var palette := ThemeCatalog.active_palette(run, storage)
+	var used: Dictionary = {}
+	for y in BoardManager.SIZE:
+		for x in BoardManager.SIZE:
+			var material := ThemeCatalog.material_at(palette, Vector2i(x, y))
+			used[material] = used.get(material, 0) + 1
+	check(used.size() == palette.size() and palette.size() >= 6, "Default board uses every studio color")
+	check(int(used.values().max()) - int(used.values().min()) <= 1, "Clay colors are balanced across the board")
+	var studio_count := floori(float(ClayArt.STUDIO.get_height()) / ClayArt.TILE)
+	for rank: Array in ThemeCatalog.PALETTES:
+		for material: int in rank:
+			check(material >= 0 and material < ThemeCatalog.STUDIO_START + studio_count, "Rank palette has an atlas row")
+	storage.data.set_value("settings", "material", 0)
+	check(ThemeCatalog.active_palette(run, storage) == [0], "An explicitly selected material is preserved")
 
 func test_interface() -> void:
 	var app: Factory = MAIN.instantiate()

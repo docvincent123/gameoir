@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dl7ew011ningf"
-path="res://.godot/imported/shine.png-6f3b69000d88363ee5f774c2c5af1532.ctex"
+uid="uid://joi1lhljbis7"
+path="res://.godot/imported/icons.png-c78c7e3bd49d22d6a3e3072f01546b73.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/workshop/shine.png"
-dest_files=["res://.godot/imported/shine.png-6f3b69000d88363ee5f774c2c5af1532.ctex"]
+source_file="res://assets/ui/workshop/icons.png"
+dest_files=["res://.godot/imported/icons.png-c78c7e3bd49d22d6a3e3072f01546b73.ctex"]
 
 [params]
 

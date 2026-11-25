@@ -9,18 +9,18 @@ var stamp_id := ""
 var stamp_center := Vector2.ZERO
 var stamp_unit := 0.0
 var refill_center := Vector2.ZERO
-var material := 0
+var palette: Array = [0]
 var elapsed := 1.0
 var raised := false
 var glowing := false
 var active := false
 
-func start(result: Dictionary, id: String, center: Vector2, unit: float, skin: int) -> void:
+func start(result: Dictionary, id: String, center: Vector2, unit: float, colors: Array) -> void:
 	change = result
 	stamp_id = id
 	stamp_center = center
 	stamp_unit = unit
-	material = skin
+	palette = colors
 	elapsed = 0.0
 	raised = false
 	glowing = false
