@@ -107,10 +107,11 @@ var slots: Array[Rect2] = [Rect2(86, 1523, 284, 185), Rect2(398, 1523, 284, 185)
 func _ready() -> void:
 	get_tree().quit_on_go_back = false
 	Engine.max_fps = 60
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	font.base_font = FONT
-	font.variation_opentype = {WEIGHT_TAG: 700}
+	font.variation_opentype = {WEIGHT_TAG: 650}
 	heading.base_font = FONT
-	heading.variation_opentype = {WEIGHT_TAG: 850}
+	heading.variation_opentype = {WEIGHT_TAG: 780}
 	heading.opentype_features = {0x746e756d: 1}
 	var layer := CanvasLayer.new()
 	layer.layer = -1
@@ -319,20 +320,26 @@ func announce(caption: String, stamp := -1) -> void:
 
 func ink(value: String, area: Rect2, size: int, color := INK, align := HORIZONTAL_ALIGNMENT_CENTER, bold := true) -> void:
 	var typeface := heading if bold else font
-	var pixels := size
-	var measured := typeface.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels).x
-	if measured > area.size.x:
-		pixels = maxi(16, int(float(size) * area.size.x / measured))
+	var pixels := fitted_font(typeface, value, area, size)
 	var baseline := area.get_center().y + (typeface.get_ascent(pixels) - typeface.get_descent(pixels)) / 2.0
-	draw_string(typeface, Vector2(area.position.x, baseline), value, align, area.size.x, pixels, color)
+	var origin := Vector2(area.position.x, baseline)
+	draw_string(typeface, origin, value, align, area.size.x, pixels, color)
+
+func fitted_font(typeface: Font, value: String, area: Rect2, requested: int) -> int:
+	var pixels := maxi(12, requested)
+	var measured := typeface.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, pixels).x
+	var height := typeface.get_height(pixels)
+	var factor := minf(1.0, minf(area.size.x / maxf(1.0, measured), area.size.y / maxf(1.0, height)))
+	return maxi(12, floori(pixels * factor))
 
 func embossed(value: String, area: Rect2, size: int, color: Color, border_color: Color, align := HORIZONTAL_ALIGNMENT_CENTER) -> void:
-	var measured := heading.get_string_size(value, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x
-	var pixels := maxi(18, mini(size, int(size * area.size.x / maxf(1.0, measured))))
+	var pixels := fitted_font(heading, value, area, size)
 	var baseline := area.get_center().y + (heading.get_ascent(pixels) - heading.get_descent(pixels)) / 2.0
 	var pos := Vector2(area.position.x, baseline)
-	draw_string_outline(heading, pos + Vector2(0, 5), value, align, area.size.x, pixels, 6, Color("#4b3529"))
-	draw_string_outline(heading, pos, value, align, area.size.x, pixels, 4, border_color)
+	# Do not draw overlapping glyph outlines: variable font contours can produce
+	# broken strokes in MSDF and Compatibility rendering.
+	var shadow := Color(border_color, color.a * 0.46)
+	draw_string(heading, pos + Vector2(0, 3), value, align, area.size.x, pixels, shadow)
 	draw_string(heading, pos, value, align, area.size.x, pixels, color)
 
 func brand(area: Rect2, compact: bool) -> void:
@@ -427,7 +434,7 @@ func draw_game() -> void:
 	var active_metal := ThemeCatalog.unlocked_choice(save, "metal", ThemeCatalog.CUTTERS, save.stat("cells"))
 	var metal: Color = ThemeCatalog.CUTTERS[active_metal][2]
 	draw_texture_rect(PremiumArt.EMBLEM, Rect2(60, 35, 155, 155), false)
-	brand(Rect2(225, 22, 620, 123), true)
+	brand(Rect2(225, 12, 620, 136), true)
 	var mode := tr("DAILY") if run.mode == GameManager.DAILY else tr("ENDLESS")
 	if run.used_continue:
 		mode = tr("ASSISTED")
@@ -453,7 +460,7 @@ func draw_game() -> void:
 	var status := rank
 	if active_order:
 		status = tr("ORDER_PROGRESS") % [run.order.cells.size() - run.order.remaining(run.board), run.order.cells.size()]
-	premium.button(self, Rect2(66, 407, 444, 57), false)
+	panel(Rect2(66, 407, 444, 57), Color("#fff1d4"), 22, Color("#d6aa68"), 2)
 	ink(status, Rect2(84, 408 if active_order else 410, 407, 46), 32, WARM if active_order else TEAL, HORIZONTAL_ALIGNMENT_LEFT)
 	if active_order:
 		var progress := 1.0 - float(run.order.remaining(run.board)) / run.order.cells.size()
@@ -464,7 +471,7 @@ func draw_game() -> void:
 		refill_label = tr("REFILL_NEXT")
 	elif soonest > 1:
 		refill_label = tr("REFILL_IN") % soonest
-	premium.button(self, Rect2(529, 407, 485, 57), false)
+	panel(Rect2(529, 407, 485, 57), Color("#fff1d4"), 22, Color("#d6aa68"), 2)
 	art.icon(self, &"clock", Vector2(558, 437), 38.0)
 	ink(refill_label, Rect2(584, 410, 420, 47), 32, WARM, HORIZONTAL_ALIGNMENT_LEFT)
 	if run.streak > 1:

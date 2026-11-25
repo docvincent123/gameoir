@@ -60,3 +60,6 @@ New profile, coin-funded cosmetics, daily/weekly missions, contextual coaching, 
 
 ## 2.0.1 premium visual preview
 New vector brand emblem, factory illustration, layered jade/gold HUD, cream/gold frame and tray, nine-slice buttons, MSDF font, crisp cell highlights, white order guides and floating point/combo effects. Board layout and hit regions remain unchanged. The reference is visual inspiration; the UI is drawn live, not a flattened screenshot. Device rendering remains unverified.
+
+## 2.0.2 text rendering hotfix
+Use grayscale rasterized Manrope rather than MSDF, supported font weights, linear canvas filtering, bounded font sizing on both axes, and simple text shadows instead of overlapping outlines. Small HUD chips no longer use nine-slice margins larger than their height. On an existing checkout close Godot, remove only the project's `.godot` import cache, then reopen `project.godot`. Saved games are stored separately in `user://`.

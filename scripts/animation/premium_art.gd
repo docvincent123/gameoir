@@ -26,6 +26,9 @@ func _init() -> void:
 		style.set_texture_margin(SIDE_BOTTOM, 34)
 
 func button(canvas: CanvasItem, area: Rect2, primary: bool) -> void:
+	if area.size.y < 68.0 or area.size.x < 76.0:
+		canvas.draw_texture_rect(GREEN if primary else CREAM, area, false)
+		return
 	canvas.draw_style_box(green_button if primary else cream_button, area)
 
 static func sparkle(canvas: CanvasItem, center: Vector2, size: float, alpha: float) -> void:
