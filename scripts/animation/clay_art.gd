@@ -9,6 +9,7 @@ const TILE := 128
 const VARIANTS := 7
 const CRUMB := VARIANTS + 2
 const FRAME := preload("res://assets/ui/workshop/board.png")
+const DOCK := preload("res://assets/ui/workshop/dock.png")
 const GLYPH_ATLAS := preload("res://assets/ui/workshop/glyphs.png")
 const GLYPHS := [&"home", &"restart", &"sound", &"music", &"haptics", &"globe", &"check", &"cutter"]
 const SURFACES := {

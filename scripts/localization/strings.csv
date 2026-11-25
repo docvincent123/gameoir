@@ -100,3 +100,11 @@ PREVIEW_ONE_LINE,1 line will enter the refill queue,1 лінія стане в �
 PREVIEW_LINES,%s lines will enter the refill queue,Ліній до черги на відновлення: %s,Liczba linii w kolejce odnowy: %s,Linien für die Füllwarteschlange: %s,Líneas que se añadirán a la cola: %s,Lignes qui rejoindront la file : %s
 COPY_DAILY,Copy daily score,Копіювати результат дня,Kopiuj wynik dnia,Tagesergebnis kopieren,Copiar resultado diario,Copier le score du jour
 DAILY_COPIED,Score copied,Результат скопійовано,Wynik skopiowany,Ergebnis kopiert,Resultado copiado,Score copié
+ORDER_PROGRESS,Order  %s/%s,Замовлення  %s/%s,Zamówienie  %s/%s,Auftrag  %s/%s,Encargo  %s/%s,Commande  %s/%s
+ORDER_HINT,Carve the marked outline,Виріжте позначений контур,Wytnij oznaczony kontur,Schneide die markierte Kontur aus,Corta el contorno marcado,Découpe le contour marqué
+ORDER_EXACT_BONUS,Precision bonus +%s,За точність +%s,Premia za precyzję +%s,Präzisionsbonus +%s,Bono de precisión +%s,Bonus de précision +%s
+ORDER_BONUS,Order bonus +%s,Бонус за замовлення +%s,Premia za zamówienie +%s,Auftragsbonus +%s,Bono del encargo +%s,Bonus de commande +%s
+ORDER_WILL_FINISH,Finishes the order · bonus +%s,Завершує замовлення · бонус +%s,Kończy zamówienie · premia +%s,Schließt Auftrag ab · Bonus +%s,Completa el encargo · bono +%s,Termine la commande · bonus +%s
+ORDER_OVER_EDGE,This cut goes outside the outline,Виріз виходить за межі контуру,Cięcie wychodzi poza kontur,Dieser Schnitt geht über den Umriss hinaus,Este corte sale del contorno,Cette découpe dépasse le contour
+ORDER_FILLED,Order complete +%s,Замовлення виконано +%s,Zamówienie gotowe +%s,Auftrag erfüllt +%s,Encargo completado +%s,Commande terminée +%s
+ORDER_EXACT,Precise order +%s,Точне замовлення +%s,Precyzyjne zamówienie +%s,Präziser Auftrag +%s,Encargo preciso +%s,Commande précise +%s

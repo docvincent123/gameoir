@@ -3,26 +3,29 @@ extends Node2D
 
 const DESIGN := Vector2(1080, 1920)
 const WEIGHT_TAG := 0x77676874 # OpenType wght axis.
-const FONT := preload("res://assets/ui/fonts/Nunito.ttf")
+const FONT := preload("res://assets/ui/fonts/Manrope.ttf")
 const BACKDROP := preload("res://assets/shaders/workshop.gdshader")
 const HABITAT := preload("res://scenes/gameplay/gameplay.tscn")
 const WORKSHOP := preload("res://scenes/menu/menu.tscn")
 const PAGES := preload("res://scenes/ui/screens.tscn")
 
-const INK := Color("#263b35")
-const MUTED := Color("#51655e")
-const TEAL := Color("#176658")
+const INK := Color("#1f332e")
+const MUTED := Color("#53685e")
+const TEAL := Color("#176452")
 const WARM := Color("#86502d")
-const PAPER := Color("#fffbee")
-const MINT := Color("#ade5cb")
-const ROSE := Color("#fac6cc")
-const SKY := Color("#c6e5f4")
-const LILAC := Color("#e1d7f3")
-const SUN := Color("#ffe2a1")
-const PEACH := Color("#ffd8bc")
+const PAPER := Color("#fbfaf5")
+const MINT := Color("#d1ebde")
+const ROSE := Color("#f4d8d6")
+const SKY := Color("#dceaf2")
+const LILAC := Color("#e8e1f3")
+const SUN := Color("#fae6b8")
+const PEACH := Color("#f7e0d0")
 const GILT := Color("#ffe093")
-const EDGE := Color("#c0d5c9")
-const SHADOW := Color(0.26, 0.34, 0.22, 0.15)
+const EDGE := Color("#d8dfd3")
+const SHADOW := Color(0.20, 0.29, 0.24, 0.10)
+const SCORE_PLATE := Color("#234b3f")
+const SCORE_LABEL := Color("#cfe5d8")
+const ORDER_PAPER := Color("#f8e7c8")
 const GRID := Rect2(88, 507, 904, 904)
 const TRAY := Rect2(62, 1500, 956, 234)
 const UNIT := GRID.size.x / BoardManager.SIZE
@@ -85,9 +88,10 @@ func _ready() -> void:
 	get_tree().quit_on_go_back = false
 	Engine.max_fps = 60
 	font.base_font = FONT
-	font.variation_opentype = {WEIGHT_TAG: 660}
+	font.variation_opentype = {WEIGHT_TAG: 620}
 	heading.base_font = FONT
-	heading.variation_opentype = {WEIGHT_TAG: 930}
+	heading.variation_opentype = {WEIGHT_TAG: 780}
+	heading.opentype_features = {0x746e756d: 1}
 	var layer := CanvasLayer.new()
 	layer.layer = -1
 	add_child(layer)
@@ -206,7 +210,7 @@ func advance_cut(delta: float) -> void:
 		audio.effect("cut")
 		audio.effect("separate", -5.0)
 		burst_cut()
-		if animation.change.lines > 0:
+		if animation.change.lines > 0 or animation.change.order.bonus > 0:
 			announce_completion()
 	if animation.elapsed >= AnimationManager.REFILL and not animation.glowing:
 		animation.glowing = true
@@ -221,14 +225,19 @@ func advance_cut(delta: float) -> void:
 		reset_press()
 
 func announce_completion() -> void:
-	var line := tr("LINE_QUEUED") if animation.change.lines == 1 else tr("MULTI_QUEUED") % animation.change.lines
-	if animation.change.full:
+	var order: Dictionary = animation.change.order
+	var line: String
+	if order.bonus > 0:
+		line = tr("ORDER_EXACT" if order.clean else "ORDER_FILLED") % group_int(order.bonus)
+	elif animation.change.full:
 		line = tr("FULL_BOARD")
 	elif run.streak >= 2:
 		line = "%s ×%d" % [tr(ComboManager.caption(run.streak)), ComboManager.multiplier(run.streak, GameManager.BALANCE)]
-	if banner != tr("NEW_BEST") or banner_age >= 1.65:
+	else:
+		line = tr("LINE_QUEUED") if animation.change.lines == 1 else tr("MULTI_QUEUED") % animation.change.lines
+	if order.bonus > 0 or banner != tr("NEW_BEST") or banner_age >= 1.65:
 		announce(line)
-	if run.streak >= 2 or animation.change.lines >= 2:
+	if order.bonus > 0 or run.streak >= 2 or animation.change.lines >= 2:
 		audio.effect("combo")
 		particles.burst(animation.stamp_center, 7 if reduced else 23, animation.palette[0], GILT, true, 1.05)
 
@@ -270,8 +279,8 @@ func panel(area: Rect2, color: Color, radius: int, edge := Color.TRANSPARENT, bo
 	art.panel(self, area, color, radius, edge, border)
 
 func card(area: Rect2, tint := PAPER) -> void:
-	panel(Rect2(area.position + Vector2(0, 8), area.size).grow(-3), SHADOW, 32)
-	art.skin(self, area, &"raised", tint)
+	panel(Rect2(area.position + Vector2(0, 5), area.size).grow(-1), SHADOW, 29)
+	panel(area, tint, 29, tint.darkened(0.09), 2)
 
 func button_face(id: String, area: Rect2) -> Rect2:
 	var travel := 8.0 * press_depth if pressed_button == id else 0.0
@@ -292,8 +301,8 @@ func button(id: String, area: Rect2, caption: String, primary := false, small :=
 		tint = tint.lerp(Color("#f0e5db"), 0.42)
 	elif hovered == id:
 		tint = tint.lightened(0.17)
-	panel(Rect2(area.position + Vector2(0, 9), area.size).grow(-2), SHADOW, 34)
-	art.skin(self, pressed, &"raised", tint)
+	panel(Rect2(area.position + Vector2(0, 6), area.size).grow(-1), SHADOW, 29)
+	panel(pressed, tint, 29, tint.darkened(0.10), 2)
 	var icon_id: StringName = BUTTON_ICONS.get(id, &"")
 	var label := pressed.grow(-13)
 	if show_icon and not icon_id.is_empty():
@@ -342,46 +351,57 @@ func draw_game() -> void:
 	var active_metal := ThemeCatalog.unlocked_choice(save, "metal", ThemeCatalog.CUTTERS, save.stat("cells"))
 	var metal: Color = ThemeCatalog.CUTTERS[active_metal][2]
 	var title := tr("TITLE_TOP") + " " + tr("TITLE_BOTTOM")
-	ink(title, Rect2(145, 64, 726, 72), 49, INK, HORIZONTAL_ALIGNMENT_LEFT)
+	ink(title, Rect2(136, 64, 718, 68), 43, INK, HORIZONTAL_ALIGNMENT_LEFT)
 	var mode := tr("DAILY") if run.mode == GameManager.DAILY else tr("ENDLESS")
 	if run.used_continue:
 		mode = tr("ASSISTED")
-	ink(mode, Rect2(147, 137, 689, 43), 26, MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	button("pause", Rect2(917, 73, 98, 95), "", false, false, false, PAPER)
-	art.icon(self, &"cutter", Vector2(91, 119), 76.0, TEAL)
-	card(Rect2(60, 216, 558, 184), Color("#e6efe4"))
-	card(Rect2(637, 216, 382, 184), Color("#f7ead4"))
-	ink(tr("SCORE").to_upper(), Rect2(96, 235, 498, 45), 27, TEAL, HORIZONTAL_ALIGNMENT_LEFT)
-	ink(group_int(roundi(score_face)), Rect2(91, 280, 491, 100), 83, INK, HORIZONTAL_ALIGNMENT_LEFT)
-	art.icon(self, &"trophy", Vector2(700, 308), 71.0)
-	ink(tr("BEST").to_upper(), Rect2(753, 242, 231, 40), 27, WARM, HORIZONTAL_ALIGNMENT_LEFT)
-	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(749, 285, 236, 78), 58, INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var rank := tr(DifficultyManager.RANKS[run.tier()])
+	var active_order := not run.order.cells.is_empty()
+	if active_order:
+		mode = "%s · %s" % [mode, rank]
+	ink(mode, Rect2(138, 128, 690, 45), 26, MUTED, HORIZONTAL_ALIGNMENT_LEFT, false)
+	button("pause", Rect2(914, 72, 99, 96), "", false, false, false, PAPER)
+	panel(Rect2(63, 82, 55, 55), Color("#e0ece0"), 18)
+	art.icon(self, &"cutter", Vector2(90, 109), 50.0, TEAL)
+
+	var meter := Rect2(60, 204, 960, 188)
+	panel(Rect2(meter.position + Vector2(0, 7), meter.size), SHADOW, 37)
+	panel(meter, SCORE_PLATE, 37, Color("#355c4e"), 2)
+	draw_line(Vector2(617, 229), Vector2(617, 367), Color("#57776a"), 2.0, true)
+	ink(tr("SCORE").to_upper(), Rect2(96, 221, 494, 44), 27, SCORE_LABEL, HORIZONTAL_ALIGNMENT_LEFT)
+	ink(group_int(roundi(score_face)), Rect2(89, 266, 490, 108), 91, PAPER, HORIZONTAL_ALIGNMENT_LEFT)
+	art.icon(self, &"trophy", Vector2(676, 298), 58.0)
+	ink(tr("BEST").to_upper(), Rect2(724, 228, 266, 42), 25, Color("#f7dfae"), HORIZONTAL_ALIGNMENT_LEFT)
+	ink(group_int(save.best(run.mode, run.day, run.used_continue)), Rect2(720, 267, 268, 97), 63, PAPER, HORIZONTAL_ALIGNMENT_LEFT)
 
 	board.render(self, art, run, GRID, style, animation, input, metal, over_age, reduced, workshop, heading)
-	panel(Rect2(67, 419, 458, 38), Color("#e0f2df"), 18)
-	ink(tr(DifficultyManager.RANKS[run.tier()]), Rect2(85, 420, 422, 35), 24, TEAL, HORIZONTAL_ALIGNMENT_LEFT)
+	var status := rank
+	if active_order:
+		status = tr("ORDER_PROGRESS") % [run.order.cells.size() - run.order.remaining(run.board), run.order.cells.size()]
+	panel(Rect2(66, 413, 444, 48), ORDER_PAPER if active_order else Color("#e8eee5"), 20)
+	ink(status, Rect2(84, 413, 407, 48), 25, WARM if active_order else TEAL, HORIZONTAL_ALIGNMENT_LEFT)
 	var soonest := run.board.soonest()
 	var refill_label := tr("REFILL_DELAY") % GameManager.BALANCE.refill_delay(run.score)
 	if soonest == 1:
 		refill_label = tr("REFILL_NEXT")
 	elif soonest > 1:
 		refill_label = tr("REFILL_IN") % soonest
-	panel(Rect2(590, 418, 420, 42), Color("#fff0cc"), 19)
-	art.icon(self, &"clock", Vector2(620, 438), 39.0)
-	ink(refill_label, Rect2(646, 418, 353, 41), 24, WARM, HORIZONTAL_ALIGNMENT_LEFT)
+	panel(Rect2(529, 413, 485, 48), Color("#f6eee0"), 20)
+	art.icon(self, &"clock", Vector2(558, 437), 38.0)
+	ink(refill_label, Rect2(584, 414, 420, 46), 25, WARM, HORIZONTAL_ALIGNMENT_LEFT)
 	if run.streak > 1:
 		ink("%s ×%d" % [tr("COMBO"), ComboManager.multiplier(run.streak, GameManager.BALANCE)],
-			Rect2(373, 236, 214, 42), 25, TEAL, HORIZONTAL_ALIGNMENT_RIGHT)
+			Rect2(372, 224, 214, 42), 25, SCORE_LABEL, HORIZONTAL_ALIGNMENT_RIGHT)
 	if banner_age < 1.65:
 		var opacity := 1.0 - smoothstep(1.30, 1.65, banner_age)
-		var area := Rect2(236, 180 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
-		panel(area, Color("#f4d7e7", opacity), 20, Color("#dcabc4", opacity * 0.6), 2)
-		ink(banner, area.grow(-8), 28, Color("#81375f", opacity))
+		var area := Rect2(236, 170 + sin(minf(banner_age * 3.5, PI)) * 3, 608, 40)
+		panel(area, Color(ORDER_PAPER, opacity), 20)
+		ink(banner, area.grow(-8), 26, Color(WARM, opacity))
 	var hint := run.first_move_hint() if show_first_move() else {}
 	var pulse := 0.72 if reduced else 0.57 + sin(clock * 4.2) * 0.16
 	if not hint.is_empty():
 		board.outline(self, GRID, UNIT, hint.cells, hint.origin, Color(TEAL, pulse), true)
-	art.skin(self, TRAY, &"recess", Color("#e4d6be"))
+	draw_texture_rect(ClayArt.DOCK, TRAY, false)
 	for slot in slots.size():
 		draw_slot(slot, style, metal)
 	if not hint.is_empty():
@@ -402,19 +422,28 @@ func draw_cut_caption(hint: Dictionary) -> void:
 		panel(Rect2(212, 1749, 656, 67), Color("#e6efe4"), 29, Color("#b2d1bc"), 2)
 		ink(tr("PREVIEW_POINTS") % group_int(points), Rect2(220, 1753, 640, 58), 31, TEAL)
 		var completed: int = input.forecast.completed.size()
-		if completed > 0:
+		var order: Dictionary = input.forecast.order
+		if order.bonus > 0:
+			ink(tr("ORDER_WILL_FINISH") % group_int(order.bonus), Rect2(76, 1824, 928, 42), 25, WARM)
+		elif order.hit and run.order.clean and not order.clean:
+			ink(tr("ORDER_OVER_EDGE"), Rect2(76, 1824, 928, 42), 25, WARM)
+		elif completed > 0:
 			var label := tr("PREVIEW_ONE_LINE") if completed == 1 else tr("PREVIEW_LINES") % completed
 			ink(label, Rect2(76, 1824, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
-	elif run.cut_count < 4 and not run.ended:
+	elif not hint.is_empty() or (run.cut_count < 4 and run.order.cells.is_empty() and not run.ended):
 		var title := "FIRST_CUT_HINT" if not hint.is_empty() else "DRAG_HINT"
 		ink(tr(title), Rect2(80, 1750, 920, 63), 32, INK)
 		ink(tr("REFILL_HINT"), Rect2(76, 1813, 928, 42), 24, MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
+	elif not run.order.cells.is_empty() and not run.ended:
+		var reward := GameManager.BALANCE.clean_order_points if run.order.clean else GameManager.BALANCE.order_points
+		ink(tr("ORDER_HINT"), Rect2(76, 1750, 928, 55), 31, INK)
+		var label := "ORDER_EXACT_BONUS" if run.order.clean else "ORDER_BONUS"
+		ink(tr(label) % group_int(reward), Rect2(76, 1812, 928, 42), 24, WARM, HORIZONTAL_ALIGNMENT_CENTER, false)
 
 func draw_slot(slot: int, style: int, metal: Color) -> void:
 	var area := slots[slot]
 	var id: String = run.cutters.hand[slot]
 	var empty := id == "" or slot == input.slot or slot == return_slot
-	art.skin(self, area, &"recess", Color("#eee3cf"))
 	if empty:
 		draw_line(area.get_center() - Vector2(18, 0), area.get_center() + Vector2(18, 0),
 			Color("#a48f75"), 4.0, true)

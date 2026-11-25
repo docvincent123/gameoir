@@ -55,6 +55,14 @@ func render(canvas: CanvasItem, art: ClayArt, run: GameManager, frame: Rect2, st
 		stamp(canvas, art, unit, animation, metal, reduced)
 		if not reduced:
 			refill_trails(canvas, art, board, unit, animation)
+	if not run.order.cells.is_empty() and not (animation.active and animation.change.order.bonus > 0):
+		var mark := Color("#28634b") if run.order.clean else Color("#77532d")
+		outline(canvas, board, unit, run.order.cells, Vector2i.ZERO, Color(mark, 0.88), true)
+		for tile: Vector2i in run.order.cells:
+			if visible[run.board.index(tile)] != 0:
+				var spot := cell_rect(board, tile, unit).get_center()
+				canvas.draw_circle(spot, 7.0, Color("#fff3db"), true, -1.0, true)
+				canvas.draw_circle(spot, 4.0, mark, true, -1.0, true)
 	var form := run.cutters.shape(input.slot)
 	if input.touched_board and not form.is_empty():
 		outline(canvas, board, unit, form.cells, input.anchor, VALID if input.valid else INVALID, false)

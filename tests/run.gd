@@ -25,6 +25,7 @@ func run_tests() -> void:
 	test_locales()
 	test_visual_palette()
 	test_cut_prediction()
+	test_orders()
 	await test_interface()
 	reset_save()
 	if failures.is_empty():
@@ -45,11 +46,14 @@ func test_board() -> void:
 	var shapes := ShapeGenerator.new().shapes
 	var art := ClayArt.new()
 	check(BoardManager.COUNT == 49, "7 × 7 board")
-	check(shapes.size() >= 100, "Expanded cutter catalog")
+	check(shapes.size() == 161 and shapes.has("pocket_0") and shapes.has("ladder_0"), "Expanded cutter catalog")
 	check(shapes.size() == art.regions.size(), "Every cutter has an atlas region")
+	var atlas := Rect2(Vector2.ZERO, ClayArt.CUTTERS.get_size())
 	for id: String in shapes:
 		var form: Dictionary = shapes[id]
-		check(art.regions.has(id), "Cutter atlas #%s" % id)
+		var region: Array = art.regions.get(id, [])
+		check(region.size() == 5 and atlas.encloses(Rect2(region[0], region[1], region[2], region[3])),
+			"Cutter sprite is within the atlas #%s" % id)
 		board.reset()
 		var corner := Vector2i(BoardManager.SIZE, BoardManager.SIZE) - Vector2i(form.size)
 		check(board.can_cut(form.cells, corner), "Bottom/right edge %s" % id)
@@ -57,6 +61,12 @@ func test_board() -> void:
 		check(not board.can_cut(form.cells, Vector2i(0, -1)), "Outside top edge %s" % id)
 		check(not board.cut(form.cells, corner).is_empty(), "Cut %s" % id)
 		check(not board.can_cut(form.cells, corner), "Reject holes %s" % id)
+	board.reset()
+	var ladder: Dictionary = shapes.ladder_0
+	var empty_center := Vector2i(1, 1)
+	board.cells[board.index(empty_center)] = 0
+	check(board.can_cut(ladder.cells, Vector2i.ZERO) and board.cut(ladder.cells, Vector2i.ZERO).removed.size() == 10,
+		"An open-center cutter can go around an existing cavity")
 	var center := Vector2i(3, 3)
 	board.reset()
 	for n in BoardManager.SIZE:
@@ -303,6 +313,47 @@ func test_cut_prediction() -> void:
 	var cut := run.play(0, Vector2i.ZERO)
 	check(cut.points == projection.points and cut.completed == projection.completed, "Actual score matches the preview")
 	check(run.first_move_hint().is_empty() and run.board.soonest() == 3, "Tutorial retires and the lines enter the normal queue")
+
+func test_orders() -> void:
+	var run := GameManager.new()
+	run.start(GameManager.ENDLESS, "", 151)
+	run.cutters.hand.assign(["single_0", "single_0", "single_0"])
+	run.order.cells.assign([Vector2i(1, 1), Vector2i(2, 1)])
+	var first := run.play(0, Vector2i(1, 1))
+	check(first.order.bonus == 0 and run.order.remaining(run.board) == 1, "The marked contour can span two cuts")
+	var snapshot := run.snapshot()
+	var forecast := run.preview_move(1, Vector2i(2, 1))
+	check(forecast.order.clean and forecast.order.bonus == GameManager.BALANCE.clean_order_points,
+		"Forecast includes the precision bonus")
+	check(run.snapshot() == snapshot, "Order preview leaves the game untouched")
+	var restored := GameManager.new()
+	check(restored.restore(snapshot) and restored.order.snapshot() == run.order.snapshot(), "Active order resumes from saved data")
+	check(restored.play(1, Vector2i(2, 1)).points == forecast.points and restored.order.completed == 1,
+		"Completing the restored order awards the forecast points once")
+
+	var mixed := GameManager.new()
+	mixed.start(GameManager.ENDLESS, "", 152)
+	mixed.cutters.hand.assign(["domino_0", "single_0", "corner_0"])
+	mixed.order.cells.assign([Vector2i(2, 2), Vector2i(2, 3)])
+	mixed.play(0, Vector2i(2, 2))
+	check(not mixed.order.clean and mixed.order.remaining(mixed.board) == 1, "Cutting over the edge forfeits the precision bonus")
+	var finish := mixed.play(1, Vector2i(2, 3))
+	check(finish.order.bonus == GameManager.BALANCE.order_points and mixed.order.completed == 1,
+		"A mixed cut can still complete the order for the standard bonus")
+	check(not mixed.order.cells.is_empty() and mixed.order.clean, "The next order starts with its own precision bonus")
+
+	var generated := CutOrder.new()
+	generated.completed = 1
+	var board := BoardManager.new()
+	var cutters := CutterManager.new()
+	cutters.hand.assign(["corner_0", "domino_0", "single_0"])
+	generated.issue(board, cutters)
+	check(generated.cells.size() > 2 and generated.remaining(board) == generated.cells.size(),
+		"Later orders can combine available cutters into one contour")
+	var old_snapshot := run.snapshot()
+	old_snapshot.erase("order")
+	check(restored.restore(old_snapshot) and restored.order.cells.is_empty(), "Older saves can start issuing orders normally")
+
 
 func test_interface() -> void:
 	var app: Factory = MAIN.instantiate()

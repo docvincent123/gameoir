@@ -50,6 +50,8 @@ func draw_hand(board: BoardManager, tier: int) -> Array[String]:
 		var weight := 1.7 if difficulty == tier else 0.8
 		if tier > 0 and id == "single_0":
 			weight = 0.42
+		elif id.begins_with("pocket_") and difficulty == 0:
+			weight *= 0.46
 		elif id.begins_with("stitch_"):
 			weight = 0.09
 		pool.append(id)

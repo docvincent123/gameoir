@@ -2,6 +2,8 @@ class_name GameBalance
 extends Resource
 
 @export var cell_points: int = 10
+@export var order_points: int = 100
+@export var clean_order_points: int = 180
 @export var line_points := PackedInt32Array([0, 100, 300, 600, 1200])
 @export var extra_line_points: int = 600
 @export var full_board_points: int = 5000

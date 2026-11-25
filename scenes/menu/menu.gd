@@ -17,13 +17,13 @@ func render(app) -> void:
 	app.draw_texture_rect(HERO, Rect2(Vector2((1080.0 - size.x) / 2.0, 498.0 - size.y / 2.0 + floating), size), false)
 
 	var title := "%s %s" % [tr("TITLE_TOP"), tr("TITLE_BOTTOM")]
-	app.ink(title, Rect2(100, 789, 880, 128), 95)
+	app.ink(title, Rect2(100, 782, 880, 138), 102)
 	app.ink(tr("ENDLESS"), Rect2(126, 917, 828, 61), 35, app.MUTED, HORIZONTAL_ALIGNMENT_CENTER, false)
 
 	app.register_button("play", PLAY_AREA)
 	var play: Rect2 = app.button_face("play", PLAY_AREA)
-	var green := Color("#295a49").lightened(0.12) if app.hovered == "play" else Color("#295a49")
-	app.panel(Rect2(PLAY_AREA.position + Vector2(0, 8), PLAY_AREA.size), Color("#1e473a"), 42)
+	var green: Color = app.SCORE_PLATE.lightened(0.12) if app.hovered == "play" else app.SCORE_PLATE
+	app.panel(Rect2(PLAY_AREA.position + Vector2(0, 8), PLAY_AREA.size), Color("#173c31"), 42)
 	app.panel(play, green, 42)
 	app.ink(tr("RESUME") if current else tr("PLAY"), play.grow(-18), 48, app.PAPER)
 

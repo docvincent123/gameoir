@@ -8,6 +8,7 @@ const LEGACY_SIZE := 8
 
 var board := BoardManager.new()
 var cutters := CutterManager.new()
+var order := CutOrder.new()
 var mode := ENDLESS
 var day := ""
 var score := 0
@@ -37,7 +38,8 @@ func preview_move(slot: int, origin: Vector2i) -> Dictionary:
 	var change := board.preview_cut(form.cells, origin)
 	if not change.is_empty():
 		var next_streak := streak + 1 if not change.completed.is_empty() else 0
-		change.points = cut_points(change, next_streak)
+		change.order = order.preview(board, change.removed, BALANCE)
+		change.points = cut_points(change, next_streak) + change.order.bonus
 	return change
 
 func first_move_hint() -> Dictionary:
@@ -69,12 +71,16 @@ func play(slot: int, origin: Vector2i) -> Dictionary:
 	max_streak = maxi(max_streak, streak)
 	cut_count += change.removed.size()
 	line_count += lines
-	var points := cut_points(change, streak)
+	change.order = order.preview(board, change.removed, BALANCE)
+	var points: int = cut_points(change, streak) + change.order.bonus
+	order.apply(change.order)
 	score += points
 	change.merge(board.advance(change.completed, BALANCE.refill_delay(score)))
 	change.dealt = cutters.hand.count(ShapeGenerator.EMPTY) == cutters.hand.size() - 1
 	cutters.consume(slot, board, tier())
 	refresh_availability()
+	if not ended and order.cells.is_empty() and cut_count >= 3:
+		order.issue(board, cutters)
 	change.points = points
 	change.lines = lines
 	change.form = form
@@ -89,7 +95,7 @@ func snapshot() -> Dictionary:
 		"mode": mode, "day": day, "score": score, "streak": streak, "max_streak": max_streak,
 		"cut_count": cut_count, "line_count": line_count, "used_continue": used_continue,
 		"ended": ended, "recorded": recorded, "cells": board.cells.duplicate(),
-		"pending": board.pending.duplicate(), "hand": cutters.hand.duplicate(),
+		"pending": board.pending.duplicate(), "hand": cutters.hand.duplicate(), "order": order.snapshot(),
 		"rng_seed": cutters.generator.rng.seed, "rng_state": cutters.generator.rng.state,
 	}
 
@@ -137,6 +143,7 @@ func restore(data: Dictionary) -> bool:
 		board.cells = cells.duplicate()
 		board.pending = pending.duplicate()
 	cutters.hand.assign(hand)
+	order.restore(data.get("order"), board)
 	cutters.generator.rng.seed = data.get("rng_seed", 0)
 	cutters.generator.rng.state = data.get("rng_state", 0)
 	if not ended:

@@ -180,7 +180,7 @@ def cutters():
             shape = [(-y, x) for x, y in shape]
 
     size = 256
-    cols = 8
+    cols = 12
     atlas = Image.new("RGBA", (cols * size, math.ceil(len(shapes) / cols) * size))
     catalog = {}
     for i, (key, shape) in enumerate(shapes.items()):
@@ -198,15 +198,15 @@ def cutters():
         dy, dx = np.gradient(signed)
         light = np.clip((.48 * dx + .72 * dy), -.75, .72)
         levels = np.clip(signed * .22, 0, 1)
-        silver = .43 + .49 * np.exp(-((levels - .34) * 3.8) ** 2) + light * .19
+        silver = .48 + .46 * np.exp(-((levels - .29) * 4.05) ** 2) + light * .16
         silver += np.clip((np.roll(signed, 3, axis=0) - signed) * .021, -.08, .07)
         silver += rng.random((size, size)) * .025
-        rgb = np.dstack([silver * 1.07, silver * 1.00, silver * 1.13])
+        rgb = np.dstack([silver * .99, silver * 1.02, silver * 1.05])
         rim = np.clip((signed + .8) * 1.3, 0, 1) * np.clip((depth + .6 - signed) * 1.2, 0, 1)
         shift = round(depth * .81)
         shifted = np.roll(signed, shift, axis=0)
         side = np.clip((shifted + .9) * 1.3, 0, 1) * np.clip((depth + .8 - shifted) * 1.2, 0, 1)
-        side_rgb = np.dstack([silver * .43, silver * .36, silver * .49])
+        side_rgb = np.dstack([.12 + silver * .43, .14 + silver * .47, .16 + silver * .49])
         metal = rgba(side_rgb, side)
         metal.alpha_composite(rgba(rgb, rim))
         ax, ay = i % cols * size, i // cols * size

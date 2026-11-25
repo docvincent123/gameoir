@@ -27,6 +27,12 @@ def isolated(image, minimum_fraction=1.0):
     return cleaned.crop(cleaned.getbbox(alpha_only=True))
 
 
+def prepare_dock(source):
+    tray = isolated(Image.open(source), .003)
+    tray.thumbnail((1152, 308), Image.Resampling.LANCZOS)
+    tray.save(DESTINATION / "dock.png", optimize=True)
+
+
 def prepare_frame(source):
     frame = isolated(Image.open(source))
     w, h = frame.size
@@ -181,6 +187,7 @@ def draw_glyphs():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--frame", type=Path)
+    parser.add_argument("--dock", type=Path)
     parser.add_argument("--icons", type=Path)
     parser.add_argument("--cubes", type=Path)
     parser.add_argument("--hero", type=Path)
@@ -189,6 +196,8 @@ if __name__ == "__main__":
     DESTINATION.mkdir(parents=True, exist_ok=True)
     if options.frame:
         prepare_frame(options.frame)
+    if options.dock:
+        prepare_dock(options.dock)
     if options.icons:
         prepare_icons(options.icons)
     if options.effects:

@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://dew00micea17r"
-path="res://.godot/imported/Nunito.ttf-fcbc66ee6f59c37f1d9771206f61fc5e.fontdata"
+uid="uid://ko373vf1fqeh"
+path="res://.godot/imported/Manrope.ttf-109775fa3f5ed2ab746f7be0426bf33e.fontdata"
 
 [deps]
 
-source_file="res://assets/ui/fonts/Nunito.ttf"
-dest_files=["res://.godot/imported/Nunito.ttf-fcbc66ee6f59c37f1d9771206f61fc5e.fontdata"]
+source_file="res://assets/ui/fonts/Manrope.ttf"
+dest_files=["res://.godot/imported/Manrope.ttf-109775fa3f5ed2ab746f7be0426bf33e.fontdata"]
 
 [params]
 
